@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
-import { ChevronLeft, Zap, Sparkles, Play, Trophy, Users, CheckCircle2, RotateCw, Image as ImageIcon, MessageSquare, Target, UserCheck, AlertCircle, Lock, X, Eye, EyeOff, PlusCircle, Send, Loader2, Camera, Key } from 'lucide-react';
+import { ChevronLeft, Zap, Sparkles, Play, Trophy, Users, CheckCircle2, RotateCw, Image as ImageIcon, MessageSquare, Target, UserCheck, AlertCircle, Lock, X, Eye, EyeOff, PlusCircle, Send, Loader2, Camera, Key, Trash2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_GAS_API_URL || '';
@@ -22,15 +22,12 @@ const CATEGORIES = [
 const Reel = ({ category, result, isSpinning, pool }) => {
   const items = [...(pool[category.key] || []), ...DEFAULT_SLOT_DATA[category.key]];
   const displayItems = Array.from({ length: 40 }).map((_, i) => items[i % items.length]);
-
   return (
     <div className={`flex-1 h-32 sm:h-48 relative overflow-hidden rounded-3xl border-4 ${category.border} ${category.bg} shadow-inner`}>
       <AnimatePresence mode="wait">
         {isSpinning ? (
           <motion.div key="spinning" initial={{ y: 0 }} animate={{ y: -2500 }} transition={{ duration: 3, ease: [0.45, 0.05, 0.55, 0.95] }} style={{ filter: 'blur(2px)' }} className="flex flex-col items-center gap-8 py-10">
-            {displayItems.map((item, i) => (
-              <span key={i} className={`text-xl font-black opacity-30 ${category.color} italic tracking-tighter`}>{item}</span>
-            ))}
+            {displayItems.map((item, i) => ( <span key={i} className={`text-xl font-black opacity-30 ${category.color} italic tracking-tighter`}>{item}</span> ))}
           </motion.div>
         ) : (
           <motion.div key="result" initial={{ y: 50, opacity: 0, scale: 0.8 }} animate={{ y: 0, opacity: 1, scale: 1 }} className="absolute inset-0 flex items-center justify-center p-4 text-center bg-white/40 backdrop-blur-[2px]">
@@ -59,8 +56,8 @@ const RctfBattle = () => {
   const [toast, setToast] = useState({ isVisible: false, message: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMap, setLoadingMap] = useState({});
-  const [selectedTeam, setSelectedTeam] = useState(null); // 호스트용 이미지 크게 보기 & 정답 보기 팀 정보
-  const [revealedTeams, setRevealedTeams] = useState(new Set()); // 정답이 공개된 팀 ID들
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [revealedTeams, setRevealedTeams] = useState(new Set());
 
   const navigate = useNavigate();
 
@@ -78,6 +75,10 @@ const RctfBattle = () => {
           if (myTeamId) {
             const myTeam = data.teams.find(t => t.TeamID === myTeamId);
             if (myTeam && myTeam.Status === 'SUBMITTED') setIsMissionLocked(true);
+            else if (myTeam && myTeam.Status === 'WAITING') {
+                setIsMissionLocked(false);
+                setImageUrl('');
+            }
           }
         } else { handleLocalFallback(); }
       } catch (err) { handleLocalFallback(); } finally { setIsLoading(false); }
@@ -101,9 +102,14 @@ const RctfBattle = () => {
     setLoadingMap(prev => ({ ...prev, [buttonId]: true }));
     try {
       await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(data) });
-      showToast('성공적으로 전송되었습니다! ✨');
+      showToast('성공적으로 처리되었습니다! ✨');
       if (data.action === 'submitPrompt') setIsMissionLocked(true);
-    } catch (err) { showToast('전송 실패!'); } finally { setTimeout(() => { setLoadingMap(prev => ({ ...prev, [buttonId]: false })); }, 500); }
+      if (data.action === 'resetAll') {
+          setResults({ R: '', C: '', T: '', F: '' });
+          setIsMissionLocked(false);
+          setRevealedTeams(new Set());
+      }
+    } catch (err) { showToast('처리 실패!'); } finally { setTimeout(() => { setLoadingMap(prev => ({ ...prev, [buttonId]: false })); }, 500); }
   };
 
   const handleAdminLogin = async (e) => {
@@ -158,14 +164,9 @@ const RctfBattle = () => {
           <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-6 sm:p-12" onClick={() => setSelectedTeam(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative max-w-5xl w-full flex flex-col gap-8" onClick={(e) => e.stopPropagation()}>
               <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white/10 bg-gray-900 aspect-video flex items-center justify-center">
-                {selectedTeam.MediaContent ? (
-                    <img src={selectedTeam.MediaContent} className="w-full h-full object-contain" alt="Quiz" />
-                ) : (
-                    <div className="text-gray-500 font-black text-3xl italic">이미지 미제출</div>
-                )}
+                {selectedTeam.MediaContent ? ( <img src={selectedTeam.MediaContent} className="w-full h-full object-contain" alt="Quiz" /> ) : ( <div className="text-gray-500 font-black text-3xl italic">이미지 미제출</div> )}
                 <div className="absolute top-8 left-8 bg-orange-500 text-white px-8 py-3 rounded-2xl font-black text-2xl shadow-xl">TEAM {selectedTeam.TeamID} 🏁</div>
               </div>
-
               <div className="flex flex-col items-center gap-6">
                 <AnimatePresence mode="wait">
                     {revealedTeams.has(selectedTeam.TeamID) ? (
@@ -175,11 +176,7 @@ const RctfBattle = () => {
                                 <span className="text-yellow-400">{selectedTeam.T}</span> <span className="text-green-400 text-2xl">({selectedTeam.F})</span>
                             </p>
                         </motion.div>
-                    ) : (
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => toggleReveal(selectedTeam.TeamID)} className="px-12 py-6 bg-white text-gray-900 rounded-[2rem] font-black text-3xl shadow-2xl flex items-center gap-4">
-                            <Key size={32} /> 정답 공개하기
-                        </motion.button>
-                    )}
+                    ) : ( <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => toggleReveal(selectedTeam.TeamID)} className="px-12 py-6 bg-white text-gray-900 rounded-[2rem] font-black text-3xl shadow-2xl flex items-center gap-4"><Key size={32} /> 정답 공개하기</motion.button> )}
                 </AnimatePresence>
                 <button onClick={() => setSelectedTeam(null)} className="text-white/40 font-bold hover:text-white transition-all text-lg underline underline-offset-8">닫기 [CLOSE]</button>
               </div>
@@ -224,7 +221,20 @@ const RctfBattle = () => {
                 <h1 className="text-4xl font-black mb-8 tracking-tight flex items-center gap-4"><Zap className="text-orange-500" /> 호스트 대시보드</h1>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100">
-                    <p className="text-sm font-bold text-gray-400 mb-6 uppercase tracking-widest">Game Setup</p>
+                    <div className="flex justify-between items-center mb-6">
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Game Setup</p>
+                        <button 
+                          onClick={() => {
+                              if (window.confirm('모든 팀 데이터와 기여 주제를 초기화하시겠습니까?')) {
+                                  callAPI({ action: 'resetAll' }, 'resetAll');
+                              }
+                          }}
+                          disabled={loadingMap['resetAll']}
+                          className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-[10px] font-black hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+                        >
+                            {loadingMap['resetAll'] ? <Loader2 size={12} className="animate-spin" /> : <><Trash2 size={12} /> RESET ALL</>}
+                        </button>
+                    </div>
                     <div className="space-y-6">
                         <div className="flex flex-wrap gap-2">
                           {[2, 3, 4, 5, 6].map(num => (
@@ -248,7 +258,6 @@ const RctfBattle = () => {
                           <div className="flex justify-between items-center mb-6"><span className="font-black text-gray-400">TEAM {team.TeamID}</span><span className={`text-[10px] px-3 py-1 rounded-full font-black ${team.Status === 'SUBMITTED' ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-400'}`}>{team.Status}</span></div>
                           {team.Status === 'SUBMITTED' ? (
                             <div className="space-y-6 flex-1 flex flex-col">
-                              {/* [업그레이드] 정답 가리기 UI */}
                               <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-100 p-6">
                                 <div className={`transition-all duration-500 ${revealedTeams.has(team.TeamID) ? 'blur-0 opacity-100' : 'blur-xl opacity-20 pointer-events-none'}`}>
                                     <p className="text-sm font-black text-gray-800 leading-tight">{team.R} @ {team.C} <br/> {team.T} ({team.F})</p>
@@ -259,19 +268,13 @@ const RctfBattle = () => {
                                     </div>
                                 )}
                               </div>
-                              
                               <div className="relative cursor-pointer overflow-hidden rounded-3xl bg-gray-200 aspect-video flex items-center justify-center group/img" onClick={() => setSelectedTeam(team)}>
                                 {team.MediaContent ? (
                                     <>
                                         <img src={team.MediaContent} className="w-full h-full object-cover transition-transform group-hover/img:scale-110" alt="Submitted" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center text-white">
-                                            <Play size={40} fill="currentColor" />
-                                            <span className="font-black mt-2">QUIZ START!</span>
-                                        </div>
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center text-white"><Play size={40} fill="currentColor" /><span className="font-black mt-2">QUIZ START!</span></div>
                                     </>
-                                ) : (
-                                    <div className="flex flex-col items-center"><ImageIcon className="text-gray-300 mb-2" size={32} /><p className="text-xs font-bold text-gray-400 italic">이미지 대기 중</p></div>
-                                )}
+                                ) : ( <div className="flex-1 flex flex-col items-center justify-center"><ImageIcon className="text-gray-300 mb-2" size={32} /><p className="text-xs font-bold text-gray-400 italic">이미지 대기 중</p></div> )}
                               </div>
                               <div className="text-3xl font-black text-gray-800 self-end mt-auto">{team.Score} <span className="text-sm font-bold text-gray-400">pt</span></div>
                             </div>
