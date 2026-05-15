@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Search, Zap, Swords, TrendingUp, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import heroImg from '../assets/hero.png';
 
 const games = [
   {
@@ -119,7 +120,7 @@ const Home = () => {
             className="relative z-10"
           >
             <img 
-              src="/src/assets/hero.png" 
+              src={heroImg} 
               alt="AI Magician" 
               className="w-full max-w-md mx-auto drop-shadow-2xl rounded-3xl"
             />

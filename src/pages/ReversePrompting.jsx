@@ -3,6 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, ChevronLeft, Sparkles, MessageCircle, Info, HelpCircle, Trophy, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Asset imports
+import promptHeroImg from '../assets/prompt_hero.png';
+import guideStep1 from '../assets/guide_step1.png';
+import guideStep2 from '../assets/guide_step2.png';
+import guideStep3 from '../assets/guide_step3.png';
+import guideStep4 from '../assets/guide_step4.png';
+
 const stages = [
   {
     id: 1,
@@ -125,10 +132,10 @@ const PromptBuilder = ({ onCopy }) => {
 
 const GroupGuide = ({ onFinish, onCopy }) => {
   const steps = [
-    { title: "1. 비밀 주문 설계", desc: "팀별로 AI가 숨길 '물건'과 절대 어기면 안 되는 '비밀 규칙'을 정해요.", img: "/src/assets/guide_step1.png" },
-    { title: "2. 마법사 소환하기", desc: "작성한 프롬프트를 AI에게 입력해 '비밀을 간직한 마법사'를 소환합니다.", img: "/src/assets/guide_step2.png" },
-    { title: "3. 탐정 활동 시작!", desc: "다른 팀들이 마법사에게 질문을 던져 물건과 규칙을 모두 맞혀야 합니다.", img: "/src/assets/guide_step3.png" },
-    { title: "4. 최고의 탐정팀은?", desc: "가장 적은 질문으로 두 가지 비밀을 모두 알아낸 팀이 승리합니다!", img: "/src/assets/guide_step4.png" }
+    { title: "1. 비밀 주문 설계", desc: "팀별로 AI가 숨길 '물건'과 절대 어기면 안 되는 '비밀 규칙'을 정해요.", img: guideStep1 },
+    { title: "2. 마법사 소환하기", desc: "작성한 프롬프트를 AI에게 입력해 '비밀을 간직한 마법사'를 소환합니다.", img: guideStep2 },
+    { title: "3. 탐정 활동 시작!", desc: "다른 팀들이 마법사에게 질문을 던져 물건과 규칙을 모두 맞혀야 합니다.", img: guideStep3 },
+    { title: "4. 최고의 탐정팀은?", desc: "가장 적은 질문으로 두 가지 비밀을 모두 알아낸 팀이 승리합니다!", img: guideStep4 }
   ];
 
   return (
@@ -247,7 +254,7 @@ const ReversePrompting = () => {
               
               <div className="w-full max-w-[480px] mx-auto mb-10 rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-white ring-1 ring-gray-100">
                 <img 
-                  src="/src/assets/prompt_hero.png" 
+                  src={promptHeroImg} 
                   alt="Prompt Detective" 
                   className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-700"
                 />

@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Zap, Sparkles, Send, CheckCircle2, AlertCircle, Copy, Rocket, Target } from 'lucide-react';
+import { ChevronLeft, Zap, Sparkles, Send, CheckCircle2, AlertCircle, Copy, Rocket, Target, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+// Asset imports
+import vibeHeroImg from '../assets/vibe_hero.png';
 
 const labStages = [
   {
@@ -94,7 +97,6 @@ const VibeTuner = ({ onCopy }) => {
     setIsTesting(true);
     setTestResult(null);
     
-    // 단순 패턴 매핑 로직 (입력값이 예시 중 하나와 비슷하면 해당 출력을 흉내냄)
     setTimeout(() => {
       let mockOut = "패턴을 파악하기 위해 더 많은 데이터가 필요해요! (예시: 'A->B' 패턴)";
       if (examples[0].out && testIn) {
@@ -265,7 +267,7 @@ const FewShotLab = () => {
             <motion.div key="intro" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card p-16 rounded-[3rem] text-center border-white shadow-2xl relative overflow-hidden bg-white">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-secondary to-teal-400" />
               <div className="w-full max-w-lg mx-auto mb-10 rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-white ring-1 ring-gray-100">
-                <img src="/src/assets/vibe_hero.png" alt="Vibe Lab" className="w-full h-full object-cover" />
+                <img src={vibeHeroImg} alt="Vibe Lab" className="w-full h-full object-cover" />
               </div>
               <h1 className="text-5xl font-black mb-6 bg-gradient-to-r from-brand-secondary to-teal-600 bg-clip-text text-transparent">감성 AI 트레이닝 센터</h1>
               <p className="text-gray-500 mb-10 text-xl leading-relaxed max-w-2xl mx-auto">
@@ -474,7 +476,5 @@ const FewShotLab = () => {
     </div>
   );
 };
-
-const Info = ({ className }) => <AlertCircle className={className} />;
 
 export default FewShotLab;
