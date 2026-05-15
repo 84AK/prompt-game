@@ -45,6 +45,7 @@ const RctfBattle = () => {
   const [newContent, setNewContent] = useState({ category: 'R', text: '' });
   const [myTeamId, setMyTeamId] = useState(null);
   const [isHost, setIsHost] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => sessionStorage.getItem('rctf_admin_auth') === 'true');
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -58,14 +59,23 @@ const RctfBattle = () => {
   const [loadingMap, setLoadingMap] = useState({});
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [revealedTeams, setRevealedTeams] = useState(new Set());
+  const [isEditingImage, setIsEditingImage] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!API_URL || !API_URL.startsWith('http')) { handleLocalFallback(); return; }
+    const fetchData = async (isInitial = false) => {
+      if (!API_URL || !API_URL.startsWith('http')) { 
+        if (isInitial) handleLocalFallback(); 
+        return; 
+      }
+      
+      if (isInitial) setIsLoading(true);
+      else setIsSyncing(true);
+
       try {
-        const res = await fetch(`${API_URL}?action=getState`);
+        const res = await fetch(`${API_URL}?action=getState&_t=${Date.now()}`);
         const data = await res.json();
         if (data && data.config) {
           setGameState(data);
@@ -80,15 +90,18 @@ const RctfBattle = () => {
                 setImageUrl('');
             }
           }
-        } else { handleLocalFallback(); }
-      } catch (err) { handleLocalFallback(); } finally { setIsLoading(false); }
+        } else if (isInitial) { handleLocalFallback(); }
+      } catch (err) { if (isInitial) handleLocalFallback(); } finally { 
+        setIsLoading(false); 
+        setTimeout(() => setIsSyncing(false), 800);
+      }
     };
     const handleLocalFallback = () => {
       setGameState({ config: { totalTeams: 4, currentTurn: 1, gameState: 'PLAYING' }, teams: Array.from({ length: 4 }, (_, i) => ({ TeamID: i + 1, Status: 'WAITING', Score: 0 })), pool: [] });
       setIsLoading(false);
     };
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
+    fetchData(true);
+    const interval = setInterval(() => fetchData(false), 10000);
     return () => clearInterval(interval);
   }, [myTeamId]);
 
@@ -103,10 +116,14 @@ const RctfBattle = () => {
     try {
       await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(data) });
       showToast('성공적으로 처리되었습니다! ✨');
-      if (data.action === 'submitPrompt') setIsMissionLocked(true);
+      if (data.action === 'submitPrompt') {
+          setIsMissionLocked(true);
+          setIsEditingImage(false);
+      }
       if (data.action === 'resetAll') {
           setResults({ R: '', C: '', T: '', F: '' });
           setIsMissionLocked(false);
+          setIsEditingImage(false);
           setRevealedTeams(new Set());
       }
     } catch (err) { showToast('처리 실패!'); } finally { setTimeout(() => { setLoadingMap(prev => ({ ...prev, [buttonId]: false })); }, 500); }
@@ -118,7 +135,13 @@ const RctfBattle = () => {
       setIsAuthenticating(true);
       const res = await fetch(`${API_URL}?action=verifyAdmin&id=${encodeURIComponent(loginData.id.trim())}&pw=${encodeURIComponent(loginData.pw.trim())}&_t=${Date.now()}`);
       const result = await res.json();
-      if (result.authorized) { setIsHost(true); setIsLoginOpen(false); showToast('인증 성공! 🔓'); } 
+      if (result.authorized) { 
+        setIsHost(true); 
+        setIsAdminAuthenticated(true);
+        sessionStorage.setItem('rctf_admin_auth', 'true');
+        setIsLoginOpen(false); 
+        showToast('인증 성공! 🔓'); 
+      } 
       else { showToast('인증 실패! ❌'); }
     } catch (err) { showToast('서버 연결 오류!'); } finally { setIsAuthenticating(false); }
   };
@@ -157,6 +180,21 @@ const RctfBattle = () => {
   return (
     <div className="min-h-screen bg-[#F0F2F9] flex flex-col font-sans pb-20 overflow-x-hidden">
       <AnimatePresence>{toast.isVisible && ( <motion.div initial={{ y: -50, opacity: 0, x: '-50%' }} animate={{ y: 20, opacity: 1, x: '-50%' }} exit={{ y: -50, opacity: 0, x: '-50%' }} className="fixed top-0 left-1/2 z-[200] px-8 py-4 bg-gray-900 text-white rounded-[1.5rem] font-bold shadow-2xl"> {toast.message} </motion.div> )}</AnimatePresence>
+      
+      {/* Background Syncing Indicator - Refined for 2026 aesthetics */}
+      <AnimatePresence>
+        {isSyncing && !isLoading && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="fixed top-6 right-6 z-[200] flex items-center gap-2 bg-white/40 backdrop-blur-xl px-3 py-2 rounded-full border border-white/50 shadow-lg"
+          >
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Live</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Image & Quiz Reveal Modal (Host Only) */}
       <AnimatePresence>
@@ -208,8 +246,26 @@ const RctfBattle = () => {
       </AnimatePresence>
 
       <header className="p-6 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-400 font-bold hover:text-gray-800 transition-all"><ChevronLeft /> 홈으로</button>
-        <button onClick={() => isHost ? setIsHost(false) : setIsLoginOpen(true)} className={`px-4 py-2 rounded-xl text-xs font-black border transition-all ${isHost ? 'bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-100' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'}`}>{isHost ? 'EXIT HOST MODE' : 'HOST MODE'}</button>
+        <button 
+          onClick={() => {
+            if (isHost) setIsHost(false);
+            else if (myTeamId) setMyTeamId(null);
+            else navigate(-1);
+          }} 
+          className="flex items-center gap-2 text-gray-400 font-bold hover:text-gray-800 transition-all group"
+        >
+          <ChevronLeft className="group-hover:-translate-x-1 transition-transform" /> 이전으로
+        </button>
+        <button 
+          onClick={() => {
+            if (isHost) setIsHost(false);
+            else if (isAdminAuthenticated) setIsHost(true);
+            else setIsLoginOpen(true);
+          }} 
+          className={`px-4 py-2 rounded-xl text-xs font-black border transition-all ${isHost ? 'bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-100' : 'bg-white text-gray-400 border-gray-200 hover:border-gray-400'}`}
+        >
+          {isHost ? 'EXIT HOST MODE' : 'HOST MODE'}
+        </button>
       </header>
 
       <main className="max-w-6xl mx-auto w-full px-6">
@@ -321,20 +377,56 @@ const RctfBattle = () => {
                         </div>
                         {!isMissionLocked ? ( <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} disabled={loadingMap['submit']} onClick={() => callAPI({ action: 'submitPrompt', teamId: myTeamId, rctf: results, mediaType: 'IMAGE', mediaContent: '' }, 'submit')} className="w-full py-6 bg-brand-primary text-white rounded-[2.5rem] font-black text-2xl shadow-2xl flex items-center justify-center gap-3">{loadingMap['submit'] ? <Loader2 className="animate-spin" /> : "이 미션으로 도전하기! 🚀"}</motion.button> ) : (
                           <div className="space-y-8">
-                            {gameState.teams.find(t=>t.TeamID===myTeamId)?.MediaContent ? (
-                              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="p-10 bg-white rounded-[3rem] border-4 border-green-500 shadow-2xl text-center space-y-6">
+                            {gameState.teams.find(t=>t.TeamID===myTeamId)?.MediaContent && !isEditingImage ? (
+                              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="p-10 bg-white rounded-[3rem] border-4 border-green-500 shadow-2xl text-center space-y-6 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4">
+                                  <button 
+                                    onClick={() => {
+                                      setImageUrl(gameState.teams.find(t=>t.TeamID===myTeamId)?.MediaContent || '');
+                                      setIsEditingImage(true);
+                                    }}
+                                    className="px-4 py-2 bg-gray-100 hover:bg-orange-100 text-gray-400 hover:text-orange-500 rounded-xl transition-all shadow-sm flex items-center gap-2 group"
+                                    title="이미지 수정하기"
+                                  >
+                                    <RotateCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+                                    <span className="text-[10px] font-black uppercase">Edit</span>
+                                  </button>
+                                </div>
                                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="text-green-500" size={40} /></div>
                                 <h4 className="text-3xl font-black text-gray-800">미션 제출 성공! 🎊</h4>
                                 <p className="text-gray-500 font-bold text-lg">우리 팀의 이미지가 선생님 화면에 전송되었습니다. <br/> 다른 팀의 퀴즈 차례를 기다리세요!</p>
-                                <div className="relative rounded-2xl overflow-hidden border-4 border-gray-100 max-w-sm mx-auto shadow-lg"><img src={gameState.teams.find(t=>t.TeamID===myTeamId)?.MediaContent} className="w-full h-auto" alt="My Submission" /><div className="absolute top-0 left-0 bg-green-500 text-white px-4 py-1 text-xs font-black">MY IMAGE</div></div>
+                                <div className="relative rounded-2xl overflow-hidden border-4 border-gray-100 max-w-sm mx-auto shadow-lg">
+                                  <img src={gameState.teams.find(t=>t.TeamID===myTeamId)?.MediaContent} className="w-full h-auto" alt="My Submission" />
+                                  <div className="absolute top-0 left-0 bg-green-500 text-white px-4 py-1 text-xs font-black">MY IMAGE</div>
+                                </div>
                               </motion.div>
                             ) : (
-                              <div className="p-10 bg-white rounded-[3rem] border-4 border-dashed border-brand-primary/20 space-y-8 shadow-inner text-center">
-                                <div className="flex items-center gap-4 mb-4 justify-center"><div className="p-4 bg-orange-100 rounded-2xl text-orange-600"><Camera size={32} /></div><h4 className="text-2xl font-black text-gray-800 tracking-tight text-left">AI 이미지 퀴즈 제출하기 🎨</h4></div>
+                              <div className="p-10 bg-white rounded-[3rem] border-4 border-dashed border-brand-primary/20 space-y-8 shadow-inner text-center relative">
+                                {isEditingImage && (
+                                  <button 
+                                    onClick={() => setIsEditingImage(false)}
+                                    className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    <X size={24} />
+                                  </button>
+                                )}
+                                <div className="flex items-center gap-4 mb-4 justify-center"><div className="p-4 bg-orange-100 rounded-2xl text-orange-600"><Camera size={32} /></div><h4 className="text-2xl font-black text-gray-800 tracking-tight text-left">{isEditingImage ? "이미지 수정하기" : "AI 이미지 퀴즈 제출하기"} 🎨</h4></div>
                                 <div className="space-y-6">
                                   <div className="flex flex-col md:flex-row gap-4">
-                                      <input type="text" placeholder="이미지 URL 주소를 붙여넣으세요" className="flex-1 px-8 py-5 bg-gray-50 border-4 border-gray-100 rounded-2xl font-bold outline-none" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-                                      <button onClick={() => callAPI({ action: 'submitPrompt', teamId: myTeamId, rctf: gameState.teams.find(t=>t.TeamID===myTeamId), mediaType: 'IMAGE', mediaContent: imageUrl }, 'submitImage')} disabled={loadingMap['submitImage'] || !imageUrl} className="px-10 py-5 bg-orange-500 text-white rounded-2xl font-black text-xl shadow-lg">{loadingMap['submitImage'] ? <Loader2 className="animate-spin" /> : "제출"}</button>
+                                      <input 
+                                        type="text" 
+                                        placeholder="이미지 URL 주소를 붙여넣으세요" 
+                                        className="flex-1 px-8 py-5 bg-gray-50 border-4 border-gray-100 rounded-2xl font-bold outline-none focus:border-brand-primary transition-all" 
+                                        value={imageUrl} 
+                                        onChange={(e) => setImageUrl(e.target.value)} 
+                                      />
+                                      <button 
+                                        onClick={() => callAPI({ action: 'submitPrompt', teamId: myTeamId, rctf: gameState.teams.find(t=>t.TeamID===myTeamId), mediaType: 'IMAGE', mediaContent: imageUrl }, 'submitImage')} 
+                                        disabled={loadingMap['submitImage'] || !imageUrl} 
+                                        className="px-10 py-5 bg-orange-500 text-white rounded-2xl font-black text-xl shadow-lg hover:bg-orange-600 active:scale-95 transition-all"
+                                      >
+                                        {loadingMap['submitImage'] ? <Loader2 className="animate-spin" /> : (isEditingImage ? "수정 완료" : "제출")}
+                                      </button>
                                   </div>
                                 </div>
                               </div>
