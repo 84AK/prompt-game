@@ -52,3 +52,13 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* 크롬, 사파리, 오페라에서 스크롤바 감추기 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* IE, 엣지, 파이어폭스에서 스크롤바 감추기 */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
