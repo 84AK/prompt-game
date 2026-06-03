@@ -23,7 +23,7 @@ const PostCard = ({ post, likes, onLike, onShare, colorIdx }) => {
   const grad = POST_COLORS[colorIdx % POST_COLORS.length];
   const postLikes = likes[post.id] ?? post.likes_count ?? 0;
 
-  const thumbUrl = post.image_url || post.prompt_data?.image_url;
+  const thumbUrl = post.media_url || post.image_url || post.prompt_data?.image_url;
   const cleanTitle = post.title?.replace(/^[\u{1F300}-\u{1FAFF}️\s]*\[.*?\]\s*/u, '').trim() || post.title || '제목 없음';
   const contentPreview = post.content ? post.content.slice(0, 90) + (post.content.length > 90 ? '...' : '') : '';
   const dateStr = post.created_at
@@ -267,7 +267,7 @@ const Home = () => {
         title: registerForm.title.trim(),
         content: registerForm.content.trim(),
         prompt_data: promptData,
-        likes_count: 0,
+        media_url: registerForm.image_url.trim() || null,
       }]);
       if (error) throw error;
       showToast('게임이 갤러리에 등록됐습니다! 🎉');
