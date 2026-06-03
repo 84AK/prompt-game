@@ -106,7 +106,7 @@ const parseMarkdownText = (markdownText) => {
           key={`img-${index}`}
           src={imgMatch[2]}
           alt={imgMatch[1] || ''}
-          className="w-full rounded-2xl my-4 object-cover shadow-md"
+          className="block mx-auto max-w-full max-h-96 rounded-2xl my-4 object-contain shadow-md"
         />
       );
       return;

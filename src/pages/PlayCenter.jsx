@@ -306,10 +306,10 @@ const PlayCenter = () => {
             <Gamepad2 size={14} /> Interactive Playground
           </span>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-800 tracking-tight leading-tight mb-4">
-            AI 아케이드 룸 & <span className="text-brand-primary">공식 템플릿 쇼케이스</span>
+            게임 <span className="text-brand-primary">센터</span>
           </h1>
           <p className="text-sm sm:text-base text-gray-500 max-w-2xl leading-relaxed">
-            나만의 AI 오프라인 게임을 창작하기 전에, 플랫폼이 공식 지원하는 핵심 게임 메커니즘 엔진을 직접 플레이해 보며 아이디어를 획득하는 실습 공간입니다.
+            직접 플레이하며 AI 게임의 재미를 경험해 보세요.
           </p>
         </div>
 
