@@ -411,52 +411,51 @@ const Home = () => {
           <span className="font-black text-xl tracking-tight text-gray-800">Prompt Arcade</span>
         </Link>
 
-        <nav className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100">
-          <Link 
-            to="/play" 
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100/50 rounded-xl text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
+        <nav className="flex items-center justify-between sm:justify-end gap-1 sm:gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100">
+          <Link
+            to="/play"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-2 hover:bg-gray-100/50 rounded-xl text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
           >
-            <Gamepad2 size={16} /> 게임 센터
+            <Gamepad2 size={16} /> <span className="hidden sm:inline">게임 센터</span>
           </Link>
 
-          <Link 
-            to="/feed" 
-            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100/50 rounded-xl text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
+          <Link
+            to="/feed"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-2 hover:bg-gray-100/50 rounded-xl text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
           >
-            <MessageSquare size={16} /> 피드 자랑
+            <MessageSquare size={16} /> <span className="hidden sm:inline">피드 자랑</span>
           </Link>
 
-          <Link 
-            to="/creator-guide" 
-            className="flex items-center gap-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 rounded-xl text-xs sm:text-sm font-black text-purple-600 transition-colors"
+          <Link
+            to="/creator-guide"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-2 bg-purple-50 hover:bg-purple-100 rounded-xl text-xs sm:text-sm font-black text-purple-600 transition-colors"
           >
-            <Sparkles size={14} className="text-purple-500" /> 게임 창작소
+            <Sparkles size={14} className="text-purple-500" /> <span className="hidden sm:inline">게임 창작소</span>
           </Link>
 
           {(profile?.role === 'ADMIN' || sessionStorage.getItem('rctf_admin_auth') === 'true') && (
-            <Link 
-              to="/admin" 
-              className="flex items-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 rounded-xl text-xs sm:text-sm font-black text-orange-600 transition-colors"
+            <Link
+              to="/admin"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 bg-orange-50 hover:bg-orange-100 rounded-xl text-xs sm:text-sm font-black text-orange-600 transition-colors"
             >
-              <Shield size={16} /> 관리자
+              <Shield size={16} /> <span className="hidden sm:inline">관리자</span>
             </Link>
           )}
 
-
-          <div className="h-4 w-[1px] bg-gray-200" />
+          <div className="h-4 w-[1px] bg-gray-200 hidden sm:block" />
 
           {user ? (
-            <div className="flex items-center gap-2">
-              <Link 
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Link
                 to="/mypage"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/80 hover:bg-white rounded-full border border-gray-100 hover:border-gray-250 shadow-sm hover:shadow text-[10px] sm:text-xs font-black text-gray-700 max-w-[120px] sm:max-w-none truncate transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-white/80 hover:bg-white rounded-full border border-gray-100 hover:border-gray-250 shadow-sm hover:shadow text-[10px] sm:text-xs font-black text-gray-700 transition-all cursor-pointer"
                 title="마이 포탈로 이동"
               >
                 <UserIcon size={12} className="text-brand-primary" />
-                {profile?.display_name || sessionStorage.getItem('user_display_name') || user?.email?.split('@')[0] || '마법사'}
+                <span className="hidden sm:inline">{profile?.display_name || sessionStorage.getItem('user_display_name') || user?.email?.split('@')[0] || '마법사'}</span>
               </Link>
 
-              <button 
+              <button
                 onClick={handleLogout}
                 className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-all text-gray-400 cursor-pointer"
                 title="로그아웃"
@@ -466,16 +465,16 @@ const Home = () => {
             </div>
 
           ) : (
-            <div className="flex items-center gap-2">
-              <Link 
-                to="/login" 
-                className="px-3 py-2 hover:bg-gray-100/50 rounded-xl text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Link
+                to="/login"
+                className="px-2 sm:px-3 py-2 hover:bg-gray-100/50 rounded-xl text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
               >
                 로그인
               </Link>
-              <Link 
-                to="/register" 
-                className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs sm:text-sm font-black hover:bg-brand-primary shadow-md transition-all"
+              <Link
+                to="/register"
+                className="px-3 sm:px-4 py-2 bg-gray-900 text-white rounded-xl text-xs sm:text-sm font-black hover:bg-brand-primary shadow-md transition-all"
               >
                 회원가입
               </Link>
