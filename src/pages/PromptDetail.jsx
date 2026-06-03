@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Calendar, User as UserIcon, Heart, Share2,
   Sparkles, Edit2, Trash2, Loader2, X, Send, ChevronLeft, Shield, Gamepad2,
-  ExternalLink, PlayCircle, Image as ImageIcon, ImagePlus
+  ExternalLink, PlayCircle, Image as ImageIcon, ImagePlus, MessageSquare
 } from 'lucide-react';
 
 const extractPlayCircleId = (url) => {
@@ -35,6 +35,10 @@ const PromptDetail = () => {
   const [toast, setToast] = useState({ isVisible: false, message: '' });
   const [uploadingImage, setUploadingImage] = useState(false);
   const editFileInputRef = useRef(null);
+  const [comments, setComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -49,6 +53,7 @@ const PromptDetail = () => {
     });
 
     fetchPostDetail();
+    fetchComments();
 
     return () => subscription.unsubscribe();
   }, [postId]);
@@ -151,6 +156,61 @@ const PromptDetail = () => {
     navigator.clipboard.writeText(window.location.href)
       .then(() => showToast('📋 이 글의 상세 링크가 클립보드에 복사되었습니다!'))
       .catch(() => showToast('링크 복사에 실패했습니다.'));
+  };
+
+  const fetchComments = async () => {
+    setLoadingComments(true);
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setComments(data || []);
+    } catch (err) {
+      console.warn('댓글 로드 실패:', err.message);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    setSubmittingComment(true);
+    const authorName = profile?.display_name || user?.email?.split('@')[0] || '익명';
+    try {
+      const { error } = await supabase.from('comments').insert([{
+        post_id: postId,
+        user_id: user.id,
+        author_name: authorName,
+        content: commentText.trim(),
+      }]);
+      if (error) throw error;
+      setCommentText('');
+      fetchComments();
+      showToast('댓글이 등록됐습니다! 💬');
+    } catch (err) {
+      showToast('댓글 등록 실패: ' + err.message);
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId, commentUserId) => {
+    const isAdmin = profile?.role === 'ADMIN' || sessionStorage.getItem('rctf_admin_auth') === 'true';
+    if (user?.id !== commentUserId && !isAdmin) {
+      showToast('삭제 권한이 없습니다.');
+      return;
+    }
+    try {
+      const { error } = await supabase.from('comments').delete().eq('id', commentId);
+      if (error) throw error;
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch (err) {
+      showToast('댓글 삭제 실패: ' + err.message);
+    }
   };
 
   // 삭제 후 이동할 경로 (game → 홈, feed → 커뮤니티)
@@ -489,6 +549,89 @@ const PromptDetail = () => {
           </span>
         </div>
       </motion.main>
+
+      {/* 댓글 섹션 */}
+      <section className="mt-8 mb-6">
+        <h3 className="flex items-center gap-2 text-sm font-black text-gray-800 mb-5">
+          <MessageSquare size={16} className="text-brand-primary" />
+          댓글 <span className="text-brand-primary">{comments.length}</span>
+        </h3>
+
+        {/* 댓글 목록 */}
+        {loadingComments ? (
+          <div className="flex justify-center py-6">
+            <Loader2 size={20} className="animate-spin text-gray-300" />
+          </div>
+        ) : comments.length === 0 ? (
+          <p className="text-xs text-gray-400 font-bold py-4 text-center">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
+        ) : (
+          <div className="space-y-3 mb-6">
+            {comments.map(comment => {
+              const isOwn = user?.id === comment.user_id;
+              const isAdmin = profile?.role === 'ADMIN' || sessionStorage.getItem('rctf_admin_auth') === 'true';
+              const dateStr = new Date(comment.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              return (
+                <motion.div
+                  key={comment.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-3 p-4 bg-gray-50 rounded-2xl"
+                >
+                  <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary text-xs font-black shrink-0">
+                    {comment.author_name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-black text-gray-800">{comment.author_name}</span>
+                      <span className="text-[10px] text-gray-400">{dateStr}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                  </div>
+                  {(isOwn || isAdmin) && (
+                    <button
+                      onClick={() => handleDeleteComment(comment.id, comment.user_id)}
+                      className="p-1.5 hover:bg-red-50 rounded-xl text-gray-300 hover:text-red-400 transition-all cursor-pointer shrink-0 self-start"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 댓글 입력 */}
+        {user ? (
+          <form onSubmit={handleAddComment} className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary text-xs font-black shrink-0 mt-1">
+              {(profile?.display_name || user?.email)?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div className="flex-1 flex gap-2">
+              <textarea
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                placeholder="댓글을 입력하세요..."
+                rows={2}
+                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all resize-none"
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddComment(e); }}
+              />
+              <button
+                type="submit"
+                disabled={submittingComment || !commentText.trim()}
+                className="px-4 py-2 bg-brand-primary hover:brightness-110 text-white rounded-2xl text-xs font-black transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 self-end"
+              >
+                {submittingComment ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                등록
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="text-center py-4 text-xs text-gray-400 font-bold bg-gray-50 rounded-2xl">
+            <button onClick={() => navigate('/login')} className="text-brand-primary underline cursor-pointer">로그인</button>하면 댓글을 남길 수 있습니다.
+          </div>
+        )}
+      </section>
 
       {/* Edit Post Modal inside Details */}
       <AnimatePresence>
