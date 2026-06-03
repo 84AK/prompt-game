@@ -185,16 +185,8 @@ const GameIntro = () => {
   const fetchGameIntro = async () => {
     setLoading(true);
 
-    const staticList = ['reverse-prompting', 'few-shot-lab', 'rctf-battle', 'prompt-evolution'];
-    if (staticList.includes(gameId)) {
-      const fallback = DEFAULT_INTRO_DATA[gameId];
-      setIntroData(fallback);
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Supabase game_intros 조회
+      // 항상 DB 먼저 조회 (어드민 수정 반영)
       const { data, error } = await supabase
         .from('game_intros')
         .select('*')
@@ -205,7 +197,6 @@ const GameIntro = () => {
       setIntroData(data);
     } catch (err) {
       console.warn('Supabase game_intros 데이터 조회 실패, 내장 기본 가이드라인으로 안전하게 구동합니다.');
-      // 디폴트 맵 정보가 존재하면 사용, 없으면 플레이스홀더 제공
       const fallback = DEFAULT_INTRO_DATA[gameId] || {
         title: '신규 아케이드 게임',
         description: '새로운 프롬프트 아케이드 교육용 콘텐츠가 한창 준비 중입니다!',
