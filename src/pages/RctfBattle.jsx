@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, Zap, Sparkles, Trophy, Users, CheckCircle2, RotateCw, 
@@ -22,14 +22,16 @@ const CATEGORIES = [
   { key: 'F', label: 'Format', color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-200' }
 ];
 
-const Reel = ({ category, result, isSpinning, pool }) => {
-  const items = [...(pool[category.key] || []), ...DEFAULT_SLOT_DATA[category.key]];
-  const displayItems = Array.from({ length: 40 }).map((_, i) => items[i % items.length]);
+const Reel = memo(({ category, result, isSpinning, pool }) => {
+  const displayItems = useMemo(() => {
+    const items = [...(pool[category.key] || []), ...DEFAULT_SLOT_DATA[category.key]];
+    return Array.from({ length: 40 }, (_, i) => items[i % items.length]);
+  }, [pool, category.key]);
   return (
     <div className={`flex-1 h-32 sm:h-48 relative overflow-hidden rounded-3xl border-4 ${category.border} ${category.bg} shadow-inner`}>
       <AnimatePresence mode="wait">
         {isSpinning ? (
-          <motion.div key="spinning" initial={{ y: 0 }} animate={{ y: -2500 }} transition={{ duration: 3, ease: [0.45, 0.05, 0.55, 0.95] }} style={{ filter: 'blur(2px)' }} className="flex flex-col items-center gap-8 py-10">
+          <motion.div key="spinning" initial={{ y: 0 }} animate={{ y: -2500 }} transition={{ duration: 3, ease: [0.45, 0.05, 0.55, 0.95] }} className="flex flex-col items-center gap-8 py-10" style={{ willChange: 'transform' }}>
             {displayItems.map((item, i) => ( <span key={i} className={`text-xl font-black opacity-30 ${category.color} italic tracking-tighter`}>{item}</span> ))}
           </motion.div>
         ) : (
@@ -40,7 +42,7 @@ const Reel = ({ category, result, isSpinning, pool }) => {
       </AnimatePresence>
     </div>
   );
-};
+});
 
 const RctfBattle = () => {
   const [activeSession, setActiveSession] = useState(null);
@@ -85,6 +87,12 @@ const RctfBattle = () => {
   const [gateError, setGateError] = useState('');
 
   const navigate = useNavigate();
+
+  // refs — timer/subscription cleanup & stale-closure 방지
+  const toastTimerRef = useRef(null);
+  const spinTimerRef = useRef(null);
+  const myTeamIdRef = useRef(myTeamId);
+  useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
 
   // 오디오 및 WebP 업로드 관련 상태
   const [isUploading, setIsUploading] = useState(false);
@@ -236,8 +244,9 @@ const RctfBattle = () => {
   };
 
   const showToast = (message) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ isVisible: true, message });
-    setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
+    toastTimerRef.current = setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
   };
 
   // 1. Supabase Auth 세션 + role 체크 → 방 로드
@@ -415,8 +424,8 @@ const RctfBattle = () => {
             }
             return prev;
           });
-          // 내 팀의 상태가 바뀐 경우 미션 락 해제 또는 활성화
-          if (myTeamId && payload.new.team_id === myTeamId) {
+          // 내 팀의 상태가 바뀐 경우 미션 락 해제 또는 활성화 (ref로 stale closure 방지)
+          if (myTeamIdRef.current && payload.new.team_id === myTeamIdRef.current) {
             if (payload.new.status === 'SUBMITTED') setIsMissionLocked(true);
             else if (payload.new.status === 'WAITING') {
               setIsMissionLocked(false);
@@ -443,7 +452,7 @@ const RctfBattle = () => {
     return () => {
       supabase.removeChannel(gameChannel);
     };
-  }, [activeSession, isLocalMode, myTeamId]);
+  }, [activeSession, isLocalMode]);
 
   const updatePoolState = (poolArray) => {
     const p = { R: [], C: [], T: [], F: [] };
@@ -819,11 +828,12 @@ const RctfBattle = () => {
   };
 
   const spinSlots = () => {
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
     setIsSpinning(true);
     setIsMissionLocked(false);
     setImageUrl('');
-    playSlotSound(); // [Audio] 레트로 슬롯 주파수 오디오 효과음 재생!
-    setTimeout(() => {
+    playSlotSound();
+    spinTimerRef.current = setTimeout(() => {
       const getRand = (cat) => {
         const pool = [...(customPool[cat] || []), ...DEFAULT_SLOT_DATA[cat]];
         return pool[Math.floor(Math.random() * pool.length)];
@@ -844,17 +854,19 @@ const RctfBattle = () => {
 
   const { config, teams } = gameState;
 
-  // team_id 기준 중복 제거 필터
-  const uniqueTeams = [];
-  const seenTeamIds = new Set();
-  if (teams && teams.length > 0) {
-    for (const team of teams) {
-      if (!seenTeamIds.has(team.team_id)) {
-        seenTeamIds.add(team.team_id);
-        uniqueTeams.push(team);
-      }
-    }
-  }
+  const uniqueTeams = useMemo(() => {
+    const seen = new Set();
+    return (teams || []).filter(team => {
+      if (seen.has(team.team_id)) return false;
+      seen.add(team.team_id);
+      return true;
+    });
+  }, [teams]);
+
+  const myTeam = useMemo(
+    () => (teams || []).find(t => t.team_id === myTeamId) || null,
+    [teams, myTeamId]
+  );
 
   return (
     <div className="min-h-screen bg-[#F0F2F9] flex flex-col font-sans pb-20 overflow-x-hidden">
@@ -1175,7 +1187,7 @@ const RctfBattle = () => {
                               <div className="relative cursor-pointer overflow-hidden rounded-3xl bg-gray-200 aspect-video flex items-center justify-center group/img" onClick={() => setSelectedTeam(team)}>
                                 {team.media_content ? (
                                   <>
-                                    <img src={team.media_content} className="w-full h-full object-cover transition-transform group-hover/img:scale-110" alt="Submitted" />
+                                    <img src={team.media_content} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform group-hover/img:scale-110" alt="Submitted" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex flex-col items-center justify-center text-white"><Target size={40} className="mb-2" /><span className="font-black">QUIZ START!</span></div>
                                   </>
                                 ) : ( <div className="flex-1 flex flex-col items-center justify-center"><ImageIcon className="text-gray-300 mb-2" size={32} /><p className="text-xs font-bold text-gray-400 italic">이미지 대기 중</p></div> )}
@@ -1234,7 +1246,7 @@ const RctfBattle = () => {
                         <Reel 
                           key={cat.key} 
                           category={cat} 
-                          result={isMissionLocked ? (gameState.teams.find(t=>t.team_id===myTeamId)?.[cat.key.toLowerCase()]) : results[cat.key]} 
+                          result={isMissionLocked ? (myTeam?.[cat.key.toLowerCase()]) : results[cat.key]} 
                           isSpinning={isSpinning} 
                           pool={customPool} 
                         />
@@ -1246,7 +1258,7 @@ const RctfBattle = () => {
                         <div className="p-12 bg-white rounded-[4rem] shadow-2xl text-center border-4 border-brand-primary/5 relative overflow-hidden">
                           <p className="text-3xl font-black text-gray-800 leading-tight">
                             {isMissionLocked ? (
-                              <><span className="text-red-500">{gameState.teams.find(t=>t.team_id===myTeamId)?.r}</span> @ <span className="text-blue-500">{gameState.teams.find(t=>t.team_id===myTeamId)?.c}</span> <br/> <span className="text-yellow-500">{gameState.teams.find(t=>t.team_id===myTeamId)?.t}</span> <span className="text-green-500">({gameState.teams.find(t=>t.team_id===myTeamId)?.f})</span></>
+                              <><span className="text-red-500">{myTeam?.r}</span> @ <span className="text-blue-500">{myTeam?.c}</span> <br/> <span className="text-yellow-500">{myTeam?.t}</span> <span className="text-green-500">({myTeam?.f})</span></>
                             ) : (
                               <><span className="text-red-500">{results.R}</span> @ <span className="text-blue-500">{results.C}</span> <br/> <span className="text-yellow-500">{results.T}</span> <span className="text-green-500">({results.F})</span></>
                             )}
@@ -1265,12 +1277,12 @@ const RctfBattle = () => {
                           </motion.button> 
                         ) : (
                           <div className="space-y-8">
-                            {gameState.teams.find(t=>t.team_id===myTeamId)?.media_content && !isEditingImage ? (
+                            {myTeam?.media_content && !isEditingImage ? (
                               <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="p-10 bg-white rounded-[3rem] border-4 border-green-500 shadow-2xl text-center space-y-6 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4">
                                   <button 
                                     onClick={() => {
-                                      setImageUrl(gameState.teams.find(t=>t.team_id===myTeamId)?.media_content || '');
+                                      setImageUrl(myTeam?.media_content || '');
                                       setIsEditingImage(true);
                                     }}
                                     className="px-4 py-2 bg-gray-100 hover:bg-orange-100 text-gray-400 hover:text-orange-500 rounded-xl transition-all shadow-sm flex items-center gap-2 group cursor-pointer"
@@ -1284,7 +1296,7 @@ const RctfBattle = () => {
                                 <h4 className="text-3xl font-black text-gray-800">미션 제출 성공! 🎊</h4>
                                 <p className="text-gray-500 font-bold text-lg">우리 팀의 이미지가 선생님 화면에 전송되었습니다. <br/> 다른 팀의 퀴즈 차례를 기다리세요!</p>
                                 <div className="relative rounded-2xl overflow-hidden border-4 border-gray-100 max-w-sm mx-auto shadow-lg">
-                                  <img src={gameState.teams.find(t=>t.team_id===myTeamId)?.media_content} className="w-full h-auto" alt="My Submission" />
+                                  <img src={myTeam?.media_content} loading="lazy" decoding="async" className="w-full h-auto" alt="My Submission" />
                                   <div className="absolute top-0 left-0 bg-green-500 text-white px-4 py-1 text-xs font-black">MY IMAGE</div>
                                 </div>
                               </motion.div>
@@ -1352,7 +1364,7 @@ const RctfBattle = () => {
                                       disabled={isUploading}
                                     />
                                     <button 
-                                      onClick={() => handleAction('submitPrompt', { teamId: myTeamId, rctf: { R: gameState.teams.find(t=>t.team_id===myTeamId)?.r, C: gameState.teams.find(t=>t.team_id===myTeamId)?.c, T: gameState.teams.find(t=>t.team_id===myTeamId)?.t, F: gameState.teams.find(t=>t.team_id===myTeamId)?.f }, mediaContent: imageUrl }, 'submitImage')} 
+                                      onClick={() => handleAction('submitPrompt', { teamId: myTeamId, rctf: { R: myTeam?.r, C: myTeam?.c, T: myTeam?.t, F: myTeam?.f }, mediaContent: imageUrl }, 'submitImage')} 
                                       disabled={loadingMap['submitImage'] || !imageUrl || isUploading} 
                                       className="px-10 py-5 bg-orange-500 text-white rounded-2xl font-black text-xl shadow-lg hover:bg-orange-600 active:scale-95 transition-all cursor-pointer flex-shrink-0 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
                                     >

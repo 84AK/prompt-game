@@ -1,36 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: #FF6B6B;
-  --color-brand-secondary: #4ECDC4;
-  --color-brand-accent: #FFE66D;
-  --color-bg-main: #F7F9FC;
-  --color-card-bg: rgba(255, 255, 255, 0.7);
-  
+  --color-brand-primary: #7C3AED;
+  --color-brand-secondary: #06B6D4;
+  --color-brand-accent: #F59E0B;
+  --color-bg-main: #FFFFFF;
+  --color-card-bg: #FFFFFF;
+
   --font-display: "Outfit", sans-serif;
   --font-body: "Inter", sans-serif;
 }
 
 :root {
   font-family: var(--font-body);
-  background-color: var(--color-bg-main);
-  color: #2D3436;
+  background-color: #FFFFFF;
+  color: #1a1a2e;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(255, 107, 107, 0.05) 0%, transparent 20%),
-    radial-gradient(circle at 90% 80%, rgba(78, 205, 196, 0.05) 0%, transparent 20%);
+  background-color: #FAFAFA;
 }
 
 .glass-card {
-  background: var(--color-card-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* 그라디언트 보더 카드 */
+.creator-card {
+  position: relative;
+  border-radius: 1.5rem;
+  background: white;
+}
+
+.creator-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.5rem;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--grad-from, #e5e7eb), var(--grad-to, #d1d5db));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .bento-grid {

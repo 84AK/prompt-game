@@ -114,6 +114,7 @@ const AdminDashboard = () => {
   });
   
   const textareaRef = useRef(null);
+  const toastTimerRef = useRef(null);
   
   // RCTF 방 생성 상태 (AdminDashboard 에서 직접 생성)
   const [createRoomTeams, setCreateRoomTeams] = useState(4);
@@ -217,8 +218,9 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   const showToast = (message) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ isVisible: true, message });
-    setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
+    toastTimerRef.current = setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
   };
 
   // 실시간으로 디비 데이터 로드 및 오토 시딩
@@ -227,12 +229,12 @@ const AdminDashboard = () => {
       // 1. 오토 시딩 (Auto-Seeding) 가동
       await seedDefaultGamesData();
 
-      // 2. 사용자 목록
-      const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      // 2. 사용자 목록 (최근 100명)
+      const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100);
       setUsersList(profiles || []);
 
-      // 3. 피드 목록
-      const { data: posts } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+      // 3. 피드 목록 (최근 50개)
+      const { data: posts } = await supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(50);
       setPostsList(posts || []);
 
       // 4. 게임 세션 목록
@@ -313,6 +315,28 @@ const AdminDashboard = () => {
       loadRealData();
     } catch (err) {
       // Mockup 변경
+      const updated = usersList.map(u => u.id === targetId ? { ...u, role: newRole } : u);
+      setUsersList(updated);
+      showToast(`로컬 임시 권한 변경: ${newRole}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 특정 역할로 직접 지정 (TEACHER, ADMIN, USER)
+  const handleSetRole = async (targetId, currentRole, newRole) => {
+    if (currentRole === newRole) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', targetId);
+
+      if (error) throw error;
+      showToast(`권한이 ${newRole}(으)로 변경되었습니다.`);
+      loadRealData();
+    } catch (err) {
       const updated = usersList.map(u => u.id === targetId ? { ...u, role: newRole } : u);
       setUsersList(updated);
       showToast(`로컬 임시 권한 변경: ${newRole}`);

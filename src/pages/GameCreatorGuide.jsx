@@ -131,10 +131,10 @@ const GameCreatorGuide = () => {
       ]);
 
       if (error) throw error;
-      showToast('📋 피드 자랑 게시판에 기획서가 자랑스럽게 등재되었습니다! 🎊');
+      showToast('📋 게임 공유 피드에 기획서가 자랑스럽게 등재되었습니다! 🎊');
     } catch (err) {
       console.error(err);
-      showToast('❌ 피드 자랑 게시판 연동에 실패했습니다. (로컬 데이터 오버플로우)');
+      showToast('❌ 게임 공유 피드 연동에 실패했습니다. (로컬 데이터 오버플로우)');
     } finally {
       setSubmittingFeed(false);
     }

@@ -250,7 +250,7 @@ const GameIntro = () => {
               어드민 편집
             </Link>
           )}
-          <span className="font-black text-xs sm:text-sm tracking-tight text-gray-800 hidden sm:inline">Prompt Arcade</span>
+          <span className="font-black text-xs sm:text-sm tracking-tight text-gray-800 hidden sm:inline">Playcraft</span>
         </div>
       </header>
 
@@ -273,7 +273,7 @@ const GameIntro = () => {
           
           <div className="absolute bottom-6 left-6 sm:bottom-10 sm:left-10 text-white space-y-2">
             <span className="px-3 py-1 bg-brand-primary text-white text-[10px] font-black uppercase rounded-full tracking-widest shadow-md">
-              Prompt Arcade Class
+              Playcraft
             </span>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-none drop-shadow-md">
               {introData.title} 소개서

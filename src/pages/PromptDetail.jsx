@@ -2,10 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, Calendar, User as UserIcon, Heart, Share2, 
-  Sparkles, Edit2, Trash2, Loader2, X, Send, ChevronLeft, Shield, Gamepad2 
+import {
+  ArrowLeft, Calendar, User as UserIcon, Heart, Share2,
+  Sparkles, Edit2, Trash2, Loader2, X, Send, ChevronLeft, Shield, Gamepad2,
+  ExternalLink, PlayCircle, Image as ImageIcon
 } from 'lucide-react';
+
+const extractPlayCircleId = (url) => {
+  if (!url) return null;
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
+  return match ? match[1] : null;
+};
 
 const CATEGORY_COLORS = {
   R: 'text-red-500 bg-red-50/50 border-red-100/50',
@@ -174,7 +181,10 @@ const PromptDetail = () => {
       r: post.prompt_data?.r || '',
       c: post.prompt_data?.c || '',
       t: post.prompt_data?.t || '',
-      f: post.prompt_data?.f || ''
+      f: post.prompt_data?.f || '',
+      image_url: post.prompt_data?.image_url || '',
+      link_url: post.prompt_data?.link_url || '',
+      youtube_url: post.prompt_data?.youtube_url || ''
     });
     setIsWriteOpen(true);
   };
@@ -188,12 +198,15 @@ const PromptDetail = () => {
     }
 
     setSubmitting(true);
-    const promptObj = (formData.r || formData.c || formData.t || formData.f) ? {
-      r: formData.r.trim(),
-      c: formData.c.trim(),
-      t: formData.t.trim(),
-      f: formData.f.trim()
-    } : null;
+    const promptObj = {
+      r: formData.r?.trim() || '',
+      c: formData.c?.trim() || '',
+      t: formData.t?.trim() || '',
+      f: formData.f?.trim() || '',
+      image_url: formData.image_url?.trim() || '',
+      link_url: formData.link_url?.trim() || '',
+      youtube_url: formData.youtube_url?.trim() || ''
+    };
 
     try {
       const { error } = await supabase
@@ -253,6 +266,9 @@ const PromptDetail = () => {
 
   const hasPrompt = post.prompt_data && (post.prompt_data.r || post.prompt_data.c || post.prompt_data.t || post.prompt_data.f);
   const isOwner = user && (post.user_id === user.id || profile?.role === 'ADMIN');
+  const imageUrl = post.prompt_data?.image_url;
+  const linkUrl = post.prompt_data?.link_url;
+  const youtubeId = extractPlayCircleId(post.prompt_data?.youtube_url);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 min-h-screen flex flex-col font-sans relative overflow-x-hidden">
@@ -308,7 +324,7 @@ const PromptDetail = () => {
 
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-brand-primary" />
-            <span className="font-black text-xs sm:text-sm tracking-tight text-gray-800">Prompt Arcade</span>
+            <span className="font-black text-xs sm:text-sm tracking-tight text-gray-800">Playcraft</span>
           </div>
         </div>
       </header>
@@ -377,7 +393,41 @@ const PromptDetail = () => {
           </div>
         )}
 
-        {/* 4. Main 설명 및 내용 */}
+        {/* 4. 이미지 */}
+        {imageUrl && (
+          <div className="mb-8 rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
+            <img src={imageUrl} alt="첨부 이미지" className="w-full max-h-[480px] object-cover" />
+          </div>
+        )}
+
+        {/* 5. 유튜브 임베드 */}
+        {youtubeId && (
+          <div className="mb-8 rounded-3xl overflow-hidden border border-gray-100 shadow-sm aspect-video">
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}`}
+              title="유튜브 영상"
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        )}
+
+        {/* 6. 외부 링크 */}
+        {linkUrl && (
+          <div className="mb-8">
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-green-50 hover:bg-green-100 border border-green-200 text-green-700 font-black text-xs rounded-2xl transition-all"
+            >
+              <ExternalLink size={14} /> 관련 링크 바로가기
+            </a>
+          </div>
+        )}
+
+        {/* 7. Main 설명 및 내용 */}
         <div className="prose max-w-none mb-12">
           <p className="text-sm sm:text-base text-gray-600 leading-relaxed whitespace-pre-wrap">{post.content}</p>
         </div>
@@ -479,19 +529,31 @@ const PromptDetail = () => {
 
                 <div>
                   <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Content</label>
-                  <textarea 
-                    rows="6" 
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all leading-relaxed" 
-                    value={formData.content} 
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })} 
+                  <textarea
+                    rows="5"
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all leading-relaxed"
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   />
                 </div>
 
-                <motion.button 
-                  whileHover={{ scale: 1.01 }} 
-                  whileTap={{ scale: 0.99 }} 
-                  type="submit" 
-                  disabled={submitting} 
+                <div className="space-y-3 p-5 bg-gray-50/80 rounded-2xl border border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">미디어 첨부 (선택)</p>
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1.5 block">유튜브 URL</label>
+                    <input type="url" placeholder="https://www.youtube.com/watch?v=..." className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-red-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300" value={formData.youtube_url || ''} onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1.5 block">관련 링크 URL</label>
+                    <input type="url" placeholder="https://..." className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-green-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300" value={formData.link_url || ''} onChange={(e) => setFormData({ ...formData, link_url: e.target.value })} />
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="submit"
+                  disabled={submitting}
                   className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 cursor-pointer"
                 >
                   {submitting ? <Loader2 className="animate-spin" /> : <><Send size={18} /> 수정 완료하기</>}

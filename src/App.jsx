@@ -19,7 +19,7 @@ import GameCreatorGuide from './pages/GameCreatorGuide';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-[#F0F2F9]">
+      <div className="min-h-screen bg-[#FAFAFA]">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/play" element={<PlayCenter />} />

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { 
-  Sparkles, ArrowLeft, MessageSquare, Plus, Trash2, 
-  User as UserIcon, Calendar, Heart, Share2, Info, Loader2, ArrowRight, Shield, Gamepad2
+import {
+  Sparkles, ArrowLeft, MessageSquare, Plus, Trash2,
+  User as UserIcon, Calendar, Heart, Share2, Info, Loader2, ArrowRight, Shield, Gamepad2,
+  X, Send, Image as ImageIcon, Link as LinkIcon, PlayCircle, Upload
 } from 'lucide-react';
 
 const PromptFeed = () => {
@@ -17,13 +18,18 @@ const PromptFeed = () => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    r: '', c: '', t: '', f: ''
+    r: '', c: '', t: '', f: '',
+    image_url: '',
+    link_url: '',
+    youtube_url: ''
   });
-  
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: '' });
   const navigate = useNavigate();
+  const toastTimerRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -43,8 +49,9 @@ const PromptFeed = () => {
   }, []);
 
   const showToast = (message) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ isVisible: true, message });
-    setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
+    toastTimerRef.current = setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
   };
 
   const fetchProfile = async (userId) => {
@@ -81,7 +88,8 @@ const PromptFeed = () => {
       const { data, error } = await supabase
         .from('posts')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
       setPosts(data || []);
@@ -153,6 +161,31 @@ const PromptFeed = () => {
       .catch(() => showToast('링크 복사에 실패했습니다.'));
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('이미지 파일은 최대 5MB까지 업로드 가능합니다.');
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('game-assets')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('game-assets').getPublicUrl(fileName);
+      setFormData(prev => ({ ...prev, image_url: publicUrl }));
+      showToast('이미지 업로드 완료! ✅');
+    } catch (err) {
+      showToast('이미지 업로드 실패: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) {
@@ -162,12 +195,17 @@ const PromptFeed = () => {
 
     setSubmitting(true);
     const authorName = profile?.display_name || sessionStorage.getItem('user_display_name') || '익명의 마법사';
-    const promptObj = (formData.r || formData.c || formData.t || formData.f) ? {
+    const promptObj = {
       r: formData.r.trim(),
       c: formData.c.trim(),
       t: formData.t.trim(),
-      f: formData.f.trim()
-    } : null;
+      f: formData.f.trim(),
+      image_url: formData.image_url.trim(),
+      link_url: formData.link_url.trim(),
+      youtube_url: formData.youtube_url.trim()
+    };
+    const hasData = Object.values(promptObj).some(v => v);
+    const finalPromptObj = hasData ? promptObj : null;
 
     try {
       const { error } = await supabase
@@ -177,7 +215,7 @@ const PromptFeed = () => {
           author_name: authorName,
           title: formData.title.trim(),
           content: formData.content.trim(),
-          prompt_data: promptObj,
+          prompt_data: finalPromptObj,
           likes_count: 0
         }]);
 
@@ -192,7 +230,7 @@ const PromptFeed = () => {
         content: formData.content.trim(),
         author_name: authorName,
         user_id: user?.id || 'dummy_user_me',
-        prompt_data: promptObj,
+        prompt_data: finalPromptObj,
         likes_count: 0,
         created_at: new Date().toISOString()
       };
@@ -212,13 +250,13 @@ const PromptFeed = () => {
       setTimeout(() => navigate('/login'), 1500);
       return;
     }
-    setFormData({ title: '', content: '', r: '', c: '', t: '', f: '' });
+    setFormData({ title: '', content: '', r: '', c: '', t: '', f: '', image_url: '', link_url: '', youtube_url: '' });
     setIsWriteOpen(true);
   };
 
   const closeModal = () => {
     setIsWriteOpen(false);
-    setFormData({ title: '', content: '', r: '', c: '', t: '', f: '' });
+    setFormData({ title: '', content: '', r: '', c: '', t: '', f: '', image_url: '', link_url: '', youtube_url: '' });
   };
 
   return (
@@ -273,7 +311,7 @@ const PromptFeed = () => {
 
           <Link to="/" className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-brand-primary" />
-            <span className="font-black text-sm tracking-tight text-gray-800 hidden sm:inline">Prompt Arcade</span>
+            <span className="font-black text-sm tracking-tight text-gray-800 hidden sm:inline">Playcraft</span>
           </Link>
         </div>
       </header>
@@ -281,110 +319,99 @@ const PromptFeed = () => {
 
 
       {/* Hero Title Section */}
-      <section className="mb-12 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-gray-100 pb-8">
+      <section className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-gray-100 pb-8">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 rounded-full mb-3 text-[10px] sm:text-xs font-bold text-brand-primary border border-brand-primary/20">
-            <MessageSquare size={14} /> PROMPT COMMUNITY FEED
+            <MessageSquare size={14} /> GAME CREATOR FEED
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-800 tracking-tight leading-none">크리에이터들의 프롬프트 및 게임 기획 공유 피드</h1>
-          <p className="text-xs sm:text-sm text-gray-500 font-bold mt-2">직접 설계한 RCTF 언플러그드 게임 기획서와 독창적인 AI 프롬프트 설계를 공유하고 탐험하세요.</p>
+          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight leading-none">게임 소개 & 공유 피드</h1>
+          <p className="text-xs sm:text-sm text-gray-500 font-bold mt-2">직접 기획한 AI 게임, 언플러그드 교구 게임을 이미지·영상·링크와 함께 소개해 보세요.</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={openWriteModal}
-          className="w-full sm:w-auto px-6 py-4 bg-gray-900 hover:bg-brand-primary text-white rounded-2xl font-black shadow-xl flex items-center justify-center gap-2 cursor-pointer transition-colors text-xs sm:text-sm"
+          className="w-full sm:w-auto px-6 py-4 bg-brand-primary hover:brightness-110 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all text-xs sm:text-sm"
         >
-          <Plus size={18} /> 새 게임 기획 공유하기
+          <Plus size={18} /> 게임 소개 올리기
         </motion.button>
       </section>
 
-      {/* Main Board List View */}
+      {/* 카드 그리드 */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-10 h-10 border-4 border-brand-primary border-t-transparent rounded-full" />
-          <p className="text-xs text-gray-400 font-bold">실시간 게시글 로드 중...</p>
+          <p className="text-xs text-gray-400 font-bold">게시글 불러오는 중...</p>
         </div>
       ) : posts.length === 0 ? (
-        <div className="text-center py-24 glass-card bg-white rounded-[3rem] p-10 border-white/50 max-w-lg mx-auto">
-          <Info className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-black text-gray-700">등록된 마법이 없습니다</h3>
-          <p className="text-xs text-gray-400 font-bold mt-1">첫 번째 주인공이 되어 기발한 프롬프트를 자랑해 보세요!</p>
+        <div className="text-center py-24 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-lg mx-auto p-10">
+          <Info className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+          <h3 className="text-lg font-black text-gray-700">아직 공유된 게임이 없습니다</h3>
+          <p className="text-xs text-gray-400 font-bold mt-1">첫 번째로 게임을 소개해 보세요!</p>
         </div>
       ) : (
-        <div className="glass-card bg-white/70 backdrop-blur-md rounded-3xl border border-white/50 shadow-xl overflow-hidden mb-12">
-          {/* 테이블형 헤더 */}
-          <div className="hidden sm:grid grid-cols-12 gap-4 px-8 py-5 border-b border-gray-100 text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
-            <div className="col-span-1 text-center">번호</div>
-            <div className="col-span-6">마법 제목 (클릭 시 상세 이동)</div>
-            <div className="col-span-2 text-center">작성자</div>
-            <div className="col-span-2 text-center">날짜</div>
-            <div className="col-span-1 text-center">피드백</div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
+          {posts.map((post) => {
+            const hasImage = post.prompt_data?.image_url;
+            const hasPlayCircle = post.prompt_data?.youtube_url;
+            const hasLink = post.prompt_data?.link_url;
+            const hasRctf = post.prompt_data && (post.prompt_data.r || post.prompt_data.c || post.prompt_data.t || post.prompt_data.f);
 
-          <div className="divide-y divide-gray-100">
-            {posts.map((post, index) => {
-              const hasPrompt = post.prompt_data && (post.prompt_data.r || post.prompt_data.c || post.prompt_data.t || post.prompt_data.f);
-              
-              return (
-                <div 
-                  key={post.id} 
-                  onClick={() => navigate(`/feed/${post.id}`)}
-                  className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 px-6 sm:px-8 py-5 items-center cursor-pointer select-none hover:bg-brand-primary/[0.03] transition-colors group"
-                >
-                  <div className="hidden sm:block col-span-1 text-center text-xs font-bold text-gray-400">
-                    {posts.length - index}
+            return (
+              <motion.div
+                key={post.id}
+                whileHover={{ y: -3 }}
+                onClick={() => navigate(`/feed/${post.id}`)}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden group"
+              >
+                {hasImage ? (
+                  <div className="w-full h-44 overflow-hidden bg-gray-100">
+                    <img src={post.prompt_data.image_url} alt="" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                   </div>
+                ) : hasPlayCircle ? (
+                  <div className="w-full h-44 bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+                    <PlayCircle className="w-12 h-12 text-red-400 opacity-60" />
+                  </div>
+                ) : (
+                  <div className="w-full h-1.5 bg-gradient-to-r from-brand-primary to-brand-secondary" />
+                )}
 
-                  <div className="col-span-12 sm:col-span-6 flex flex-col gap-1.5 sm:gap-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-sm sm:text-base text-gray-700 leading-tight group-hover:text-brand-primary transition-colors block truncate max-w-[75vw] sm:max-w-none">
-                        {post.title}
-                      </span>
-                      <ArrowRight size={14} className="text-gray-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all shrink-0" />
+                <div className="p-5">
+                  {(hasImage || hasPlayCircle || hasLink || hasRctf) && (
+                    <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                      {hasRctf && <span className="px-2 py-0.5 bg-violet-50 text-violet-500 rounded-full text-[9px] font-black">RCTF</span>}
+                      {hasImage && <span className="px-2 py-0.5 bg-blue-50 text-blue-500 rounded-full text-[9px] font-black flex items-center gap-0.5"><ImageIcon size={9}/> 이미지</span>}
+                      {hasPlayCircle && <span className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-[9px] font-black flex items-center gap-0.5"><PlayCircle size={9}/> 영상</span>}
+                      {hasLink && <span className="px-2 py-0.5 bg-green-50 text-green-500 rounded-full text-[9px] font-black flex items-center gap-0.5"><LinkIcon size={9}/> 링크</span>}
                     </div>
-                    
-                    {/* 모바일 뷰 최적화 메타데이터 */}
-                    <div className="flex sm:hidden items-center gap-2 text-[10px] text-gray-400 font-bold">
-                      <span>{post.author_name}</span>
-                      <span>•</span>
-                      <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                  )}
+
+                  <h3 className="font-black text-sm text-gray-900 leading-tight mb-2 group-hover:text-brand-primary transition-colors line-clamp-2">{post.title}</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-4">{post.content}</p>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                        <UserIcon size={10} className="text-gray-500" />
+                      </div>
+                      <span className="text-[10px] font-black text-gray-500 truncate max-w-[80px]">{post.author_name}</span>
+                      <span className="text-[10px] text-gray-300">•</span>
+                      <span className="text-[10px] text-gray-400">{new Date(post.created_at).toLocaleDateString()}</span>
                     </div>
-                  </div>
-
-                  <div className="hidden sm:block col-span-2 text-center text-xs font-black text-gray-600 truncate">
-                    {post.author_name}
-                  </div>
-
-                  <div className="hidden sm:block col-span-2 text-center text-xs text-gray-400 font-bold">
-                    {new Date(post.created_at).toLocaleDateString()}
-                  </div>
-
-                  <div className="col-span-12 sm:col-span-1 flex items-center justify-between sm:justify-center text-xs font-bold text-gray-400 mt-2 sm:mt-0">
-                    <span className="sm:hidden text-[10px] text-gray-400">이 프롬프트를 상세하게 확인하세요</span>
-                    
-                    <div className="flex items-center gap-1 sm:gap-0">
-                      <button 
-                        onClick={(e) => handleLikePost(e, post.id)}
-                        className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-all text-gray-400 flex items-center gap-1 cursor-pointer"
-                        title="추천하기"
-                      >
-                        <Heart size={13} className={(post.likes_count || 0) > 0 ? 'fill-red-500 text-red-500' : ''} />
-                        <span className="text-[10px] font-black text-gray-700">{(post.likes_count || 0)}</span>
+                    <div className="flex items-center gap-0.5">
+                      <button onClick={(e) => handleLikePost(e, post.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-all text-gray-400 flex items-center gap-1 cursor-pointer">
+                        <Heart size={12} className={(post.likes_count || 0) > 0 ? 'fill-red-500 text-red-500' : ''} />
+                        <span className="text-[10px] font-black">{post.likes_count || 0}</span>
                       </button>
-                      <button 
-                        onClick={(e) => handleShare(e, post.id)}
-                        className="p-2 hover:bg-gray-100 hover:text-brand-secondary rounded-xl transition-all text-gray-400 cursor-pointer"
-                        title="링크 공유"
-                      >
-                        <Share2 size={13} />
+                      <button onClick={(e) => handleShare(e, post.id)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-all text-gray-400 cursor-pointer">
+                        <Share2 size={12} />
                       </button>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
@@ -460,24 +487,82 @@ const PromptFeed = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Content (상세 설명 & 프롬프트 전문)</label>
-                  <textarea 
-                    rows="6" 
-                    placeholder="조합한 프롬프트 전문이나, AI와 나눈 신기한 답변 내용, 꿀팁들을 마음껏 채워주세요!" 
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all placeholder:text-gray-300 whitespace-pre-wrap leading-relaxed" 
-                    value={formData.content} 
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })} 
+                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Content (상세 설명 & 게임 소개)</label>
+                  <textarea
+                    rows="5"
+                    placeholder="게임 규칙, 플레이 방법, AI와 나눈 신기한 결과물, 꿀팁 등을 자유롭게 소개해 주세요!"
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all placeholder:text-gray-300 whitespace-pre-wrap leading-relaxed"
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   />
                 </div>
 
-                <motion.button 
-                  whileHover={{ scale: 1.01 }} 
-                  whileTap={{ scale: 0.99 }} 
-                  type="submit" 
-                  disabled={submitting} 
-                  className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 cursor-pointer"
+                {/* 미디어 첨부 섹션 */}
+                <div className="space-y-3 p-5 bg-gray-50/80 rounded-2xl border border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <ImageIcon size={12} /> 미디어 첨부 (선택)
+                  </p>
+
+                  {/* 이미지 업로드 */}
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1.5 block flex items-center gap-1">
+                      <ImageIcon size={12} className="text-blue-400" /> 이미지 업로드
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-xl cursor-pointer transition-all text-xs font-bold text-gray-500 hover:text-blue-500">
+                        {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                        {uploadingImage ? '업로드 중...' : '파일 선택'}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+                      </label>
+                      {formData.image_url && (
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <img src={formData.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-100 shrink-0" />
+                          <span className="text-[10px] text-green-600 font-black truncate">업로드 완료 ✅</span>
+                          <button type="button" onClick={() => setFormData(p => ({ ...p, image_url: '' }))} className="p-1 hover:bg-red-50 rounded-lg text-gray-300 hover:text-red-400 cursor-pointer shrink-0">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* YouTube URL */}
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1.5 block flex items-center gap-1">
+                      <PlayCircle size={12} className="text-red-500" /> 유튜브 영상 URL
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-red-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300"
+                      value={formData.youtube_url}
+                      onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })}
+                    />
+                  </div>
+
+                  {/* 외부 링크 */}
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1.5 block flex items-center gap-1">
+                      <LinkIcon size={12} className="text-green-500" /> 관련 링크 URL
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://... (게임 링크, 참고 자료 등)"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-green-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300"
+                      value={formData.link_url}
+                      onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="submit"
+                  disabled={submitting || uploadingImage}
+                  className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
                 >
-                  {submitting ? <Loader2 className="animate-spin" /> : <><Send size={18} /> 마법 등록하기</>}
+                  {submitting ? <Loader2 className="animate-spin" /> : <><Send size={18} /> 게임 소개 등록하기</>}
                 </motion.button>
               </form>
             </motion.div>

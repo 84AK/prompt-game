@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as LucideIcons from 'lucide-react';
 import { 
@@ -86,145 +86,102 @@ const STATIC_GAMES = [
 ];
 
 
+const GAME_GRADIENTS = {
+  'reverse-prompting': { from: '#f87171', to: '#ef4444', label: 'text-red-500', bg: 'bg-red-50' },
+  'few-shot-lab':      { from: '#2dd4bf', to: '#06b6d4', label: 'text-teal-500', bg: 'bg-teal-50' },
+  'rctf-battle':       { from: '#fbbf24', to: '#f59e0b', label: 'text-amber-500', bg: 'bg-amber-50' },
+  'prompt-evolution':  { from: '#a78bfa', to: '#7c3aed', label: 'text-violet-500', bg: 'bg-violet-50' },
+  'unplugged-quest':   { from: '#fb923c', to: '#f97316', label: 'text-orange-500', bg: 'bg-orange-50' },
+  'unplugged-roleplay':{ from: '#818cf8', to: '#6366f1', label: 'text-indigo-500', bg: 'bg-indigo-50' },
+};
+
 const GameCard = ({ game, likes, onLike, onShare }) => {
   const navigate = useNavigate();
   const gameLikes = likes[game.id] || 0;
+  const grad = GAME_GRADIENTS[game.id] || { from: '#e5e7eb', to: '#d1d5db', label: 'text-gray-500', bg: 'bg-gray-50' };
 
-  // DB 필드와 정적 필드의 변수명 불일치 방지 보정 (camelCase / snake_case 둘 다 대응)
-  const cardColor = game.color || 'bg-gray-50/40';
-  const cardBorder = game.border_color || game.borderColor || 'border-gray-150/50';
+  const IconName = game.icon_name || 'Gamepad2';
+  const IconComponent = LucideIcons[IconName] || LucideIcons.Gamepad2;
+  const isPlayable = ['reverse-prompting', 'few-shot-lab', 'rctf-battle'].includes(game.id);
 
-  const renderIcon = () => {
-    // 만약 기존 리액트 엘리먼트 형태라면 그대로 반환
-    if (game.icon && React.isValidElement(game.icon)) {
-      return game.icon;
-    }
-    
-    // LucideIcons 컴포넌트 동적 매핑
-    const IconName = game.icon_name || 'Gamepad2';
-    const IconComponent = LucideIcons[IconName] || LucideIcons.Gamepad2;
-
-    let iconColorClass = 'text-brand-primary';
-    if (game.id === 'reverse-prompting') iconColorClass = 'text-red-500';
-    else if (game.id === 'few-shot-lab') iconColorClass = 'text-teal-500';
-    else if (game.id === 'rctf-battle') iconColorClass = 'text-yellow-500';
-    else if (game.id === 'prompt-evolution') iconColorClass = 'text-purple-500';
-    else if (game.id === 'unplugged-quest') iconColorClass = 'text-orange-500';
-    else if (game.id === 'unplugged-roleplay') iconColorClass = 'text-indigo-500';
-
-    return <IconComponent className={`w-6 h-6 ${iconColorClass}`} />;
-  };
-  
   return (
     <motion.div
-      whileHover={{ y: -6, scale: 1.01 }}
+      whileHover={{ y: -4, scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
-      className={`snap-start min-w-[280px] sm:min-w-[320px] max-w-[320px] flex-shrink-0 glass-card p-6 rounded-[2.5rem] bg-white/85 border border-gray-150 flex flex-col justify-between hover:shadow-xl transition-all duration-300 ${cardColor} ${cardBorder}`}
+      style={{ '--grad-from': grad.from, '--grad-to': grad.to }}
+      className="group relative rounded-[1.75rem] p-[2px] transition-all duration-300 hover:shadow-xl"
     >
-      <div>
-        {/* 프리미엄 썸네일 탑재 */}
-        <div className="w-full h-32 rounded-2xl overflow-hidden mb-5 relative group/img shadow-inner bg-gray-100">
-          <img 
-            src={game.thumbnail_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80'} 
+      <div
+        className="absolute inset-0 rounded-[1.75rem] opacity-100"
+        style={{ background: `linear-gradient(135deg, ${grad.from}, ${grad.to})` }}
+      />
+      <div className="relative bg-white rounded-[1.6rem] p-5 flex flex-col h-full">
+        {/* 썸네일 */}
+        <div className="w-full h-36 rounded-xl overflow-hidden mb-4 relative bg-gray-100">
+          <img
+            src={game.thumbnail_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=70'}
             alt={game.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          {game.is_new && (
+            <span className="absolute top-2 left-2 px-2 py-0.5 bg-white text-[9px] font-black rounded-full shadow-sm" style={{ color: grad.from }}>NEW</span>
+          )}
         </div>
 
-        <div className="flex justify-between items-start mb-4">
-          <div className="p-3 bg-white rounded-2xl shadow-sm">
-            {renderIcon()}
+        <div className="flex items-center justify-between mb-3">
+          <div className={`p-2 ${grad.bg} rounded-xl`}>
+            <IconComponent className={`w-5 h-5 ${grad.label}`} />
           </div>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 bg-white/70 backdrop-blur-sm rounded-full text-[10px] font-black text-gray-500 border border-white/50">
-              #{game.tag}
-            </span>
-          </div>
+          <span className={`px-2.5 py-1 ${grad.bg} rounded-full text-[10px] font-black ${grad.label}`}>#{game.tag}</span>
         </div>
-        
-        <h3 className="text-lg font-black mb-2 text-gray-800 tracking-tight leading-tight">{game.title}</h3>
-        <p className="text-xs text-gray-500 leading-relaxed min-h-[48px]">{game.description}</p>
-      </div>
-      
-      {['reverse-prompting', 'few-shot-lab', 'rctf-battle'].includes(game.id) ? (
-        <div className="mt-6 pt-4 border-t border-gray-150/50 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <button 
-              onClick={() => navigate(`/game/${game.id}`)}
-              className="flex-1 px-2.5 py-2 bg-gray-900 hover:bg-brand-primary text-white rounded-xl text-[10px] font-black flex items-center justify-center gap-1 shadow-sm hover:shadow transition-all duration-200 cursor-pointer whitespace-nowrap truncate"
-            >
-              🚀 바로 체험
-            </button>
-            <button 
+
+        <h3 className="text-base font-black mb-1.5 text-gray-900 leading-tight">{game.title}</h3>
+        <p className="text-xs text-gray-500 leading-relaxed flex-1 min-h-[40px]">{game.description}</p>
+
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-1.5">
+          {isPlayable ? (
+            <>
+              <button
+                onClick={() => navigate(`/game/${game.id}`)}
+                className="flex-1 py-2 text-white text-[10px] font-black rounded-xl transition-all cursor-pointer"
+                style={{ background: `linear-gradient(135deg, ${grad.from}, ${grad.to})` }}
+              >
+                🚀 바로 체험
+              </button>
+              <button
+                onClick={() => navigate(`/game/${game.id}/intro`)}
+                className="flex-1 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-100 rounded-xl text-[10px] font-black cursor-pointer transition-all"
+              >
+                📖 소개서
+              </button>
+            </>
+          ) : (
+            <button
               onClick={() => navigate(`/game/${game.id}/intro`)}
-              className="flex-1 px-2.5 py-2 bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 hover:border-gray-300 rounded-xl text-[10px] font-black flex items-center justify-center gap-1 shadow-sm transition-all duration-200 cursor-pointer whitespace-nowrap truncate"
+              className="flex-1 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-100 rounded-xl text-xs font-black cursor-pointer transition-all"
             >
-              📖 소개서
+              소개서 보기 →
             </button>
-          </div>
+          )}
 
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onLike(game.id);
-              }}
-              className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg transition-all text-gray-400 flex items-center gap-0.5 cursor-pointer"
-              title="좋아요"
-            >
-              <Heart size={12} className={gameLikes > 0 ? 'fill-red-500 text-red-500' : ''} />
-              <span className="text-[9px] font-black">{gameLikes}</span>
-            </button>
-            
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onShare(game.id);
-              }}
-              className="p-1.5 hover:bg-gray-100 hover:text-brand-secondary rounded-lg transition-all text-gray-400 cursor-pointer"
-              title="링크 공유"
-            >
-              <Share2 size={12} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-6 pt-4 border-t border-gray-150/50 flex items-center justify-between">
-          <button 
-            onClick={() => navigate(`/game/${game.id}/intro`)}
-            className="text-xs font-black text-gray-800 hover:text-brand-primary flex items-center gap-1 group/btn cursor-pointer"
+          <button
+            onClick={(e) => { e.stopPropagation(); onLike(game.id); }}
+            className="p-2 hover:bg-red-50 rounded-xl transition-all text-gray-400 flex items-center gap-1 cursor-pointer"
           >
-            시작하기
-            <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
+            <Heart size={13} className={gameLikes > 0 ? 'fill-red-500 text-red-500' : ''} />
+            <span className="text-[9px] font-black">{gameLikes}</span>
           </button>
-
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onLike(game.id);
-              }}
-              className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-all text-gray-400 flex items-center gap-1 cursor-pointer"
-              title="좋아요"
-            >
-              <Heart size={14} className={gameLikes > 0 ? 'fill-red-500 text-red-500' : ''} />
-              <span className="text-[10px] font-black">{gameLikes}</span>
-            </button>
-            
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onShare(game.id);
-              }}
-              className="p-2 hover:bg-gray-100 hover:text-brand-secondary rounded-xl transition-all text-gray-400 cursor-pointer"
-              title="링크 공유"
-            >
-              <Share2 size={14} />
-            </button>
-          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onShare(game.id); }}
+            className="p-2 hover:bg-gray-100 rounded-xl transition-all text-gray-400 cursor-pointer"
+          >
+            <Share2 size={13} />
+          </button>
         </div>
-      )}
+      </div>
     </motion.div>
   );
 };
@@ -238,6 +195,8 @@ const Home = () => {
   const [gamesList, setGamesList] = useState([]);
   const [loadingGames, setLoadingGames] = useState(false);
   const navigate = useNavigate();
+
+  const toastTimerRef = useRef(null);
 
   // 3가지 가로 캐러셀 섹션의 스크롤 제어를 위한 useRef
   const tabCarouselRef = useRef(null);
@@ -285,8 +244,8 @@ const Home = () => {
       });
       setLikes(dbLikes);
     } catch (err) {
-      console.warn("DB games load failed, empty list initialized:", err.message);
-      setGamesList([]);
+      console.warn("DB games load failed, using static games:", err.message);
+      setGamesList(STATIC_GAMES);
     } finally {
       setLoadingGames(false);
     }
@@ -369,8 +328,9 @@ const Home = () => {
   };
 
   const showToast = (message) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ isVisible: true, message });
-    setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
+    toastTimerRef.current = setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
   };
 
   // 캐러셀 좌우 슬라이딩 헬퍼 함수
@@ -383,10 +343,18 @@ const Home = () => {
     }
   };
 
-  const gamesSource = gamesList;
-  const filteredGames = gamesSource.filter(g => activeTab === 'all' || g.category === activeTab);
-  const newGamesList = gamesSource.filter(g => g.is_new || g.isNew);
-  const popularGamesList = gamesSource.filter(g => g.is_popular || g.isPopular);
+  const filteredGames = useMemo(
+    () => gamesList.filter(g => activeTab === 'all' || g.category === activeTab),
+    [gamesList, activeTab]
+  );
+  const newGamesList = useMemo(
+    () => gamesList.filter(g => g.is_new || g.isNew),
+    [gamesList]
+  );
+  const popularGamesList = useMemo(
+    () => gamesList.filter(g => g.is_popular || g.isPopular),
+    [gamesList]
+  );
 
 
   return (
@@ -408,7 +376,7 @@ const Home = () => {
       <header className="sticky top-4 z-50 flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-8 py-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl shadow-lg mb-12">
         <Link to="/" className="flex items-center gap-2 group self-start sm:self-auto">
           <Sparkles className="w-6 h-6 text-brand-primary group-hover:rotate-12 transition-transform" />
-          <span className="font-black text-xl tracking-tight text-gray-800">Prompt Arcade</span>
+          <span className="font-black text-xl tracking-tight text-gray-800">Playcraft</span>
         </Link>
 
         <nav className="flex items-center justify-between sm:justify-end gap-1 sm:gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100">
@@ -493,15 +461,14 @@ const Home = () => {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-accent/20 rounded-full mb-6">
               <Sparkles className="w-4 h-4 text-brand-primary" />
-              <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Prompt Arcade Studio</span>
+              <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Playcraft</span>
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black mb-6 leading-tight text-gray-800">
-              세상에 없던 AI 게임을 <br />
-              <span className="text-brand-primary">창작하고 공유하자!</span>
+              상상해봐.<br />
+              <span className="text-brand-primary">게임이 될 테니까.</span>
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-8 max-w-lg mx-auto md:mx-0 leading-relaxed">
-              나만의 독창적인 프롬프트로 기발한 AI 오프라인 게임을 직접 설계하고 투고해 보세요.
-              동료 크리에이터들이 창조해 낸 멋진 아케이드를 즉석에서 플레이해 볼 수 있습니다.
+              AI를 도구 삼아, 세상에 없는 게임을 직접 만들고 공유하세요.
             </p>
             <button 
               onClick={() => navigate('/play')}
@@ -528,157 +495,60 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 1. 카테고리별 캐러셀 */}
-      <section id="game-section" className="mb-16 scroll-mt-6 relative group">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8 border-b border-gray-100 pb-6">
+      {/* 게임 갤러리 섹션 */}
+      <section id="game-section" className="mb-20 scroll-mt-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-gray-800 flex items-center gap-2">
-              <Gamepad2 className="text-brand-primary" /> 공유된 프롬프트 아케이드 탐색
+            <h2 className="text-2xl sm:text-3xl font-black text-gray-900 flex items-center gap-2">
+              <Gamepad2 className="text-brand-primary" /> 게임 갤러리
             </h2>
-            <p className="text-xs sm:text-sm text-gray-500 font-bold mt-1">전국 마법사 크리에이터들이 창작하고 기여한 실시간 공유 게임들을 둘러보세요.</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">크리에이터들이 직접 만들고 공유한 AI 게임 모음</p>
           </div>
 
-          <div className="flex bg-white/60 backdrop-blur-md p-1.5 border border-gray-100 rounded-2xl w-full sm:w-auto shadow-inner">
+          {/* 카테고리 탭 */}
+          <div className="flex items-center gap-2 p-1 bg-gray-100 rounded-2xl">
             {[
-              { key: 'all', label: '전체', icon: <Layers size={14} /> },
-              { key: 'unplugged', label: '언플러그드 게임', icon: <Users size={14} /> },
-              { key: 'prompt', label: '프롬프트 게임', icon: <Gamepad2 size={14} /> }
+              { key: 'all', label: '전체', icon: <Layers size={13} /> },
+              { key: 'unplugged', label: '언플러그드', icon: <Users size={13} /> },
+              { key: 'prompt', label: '프롬프트', icon: <Gamepad2 size={13} /> }
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${activeTab === tab.key ? 'bg-gray-900 text-white shadow-md' : 'text-gray-400 hover:text-gray-700'}`}
+                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                  activeTab === tab.key
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                {tab.icon}
-                {tab.label}
+                {tab.icon}{tab.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* 캐러셀 영역 */}
-        <div className="relative">
-          {/* 좌우 화살표 버튼 (Glassmorphic) */}
-          <button 
-            onClick={() => scrollCarousel(tabCarouselRef, 'left')}
-            className="absolute left-[-16px] top-1/2 -translate-y-1/2 z-10 p-3 bg-white/60 backdrop-blur-md hover:bg-white text-gray-700 border border-white/50 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 hidden sm:block"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          
-          <button 
-            onClick={() => scrollCarousel(tabCarouselRef, 'right')}
-            className="absolute right-[-16px] top-1/2 -translate-y-1/2 z-10 p-3 bg-white/60 backdrop-blur-md hover:bg-white text-gray-700 border border-white/50 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 hidden sm:block"
-          >
-            <ChevronRight size={20} />
-          </button>
-
-          {/* 가로 스크롤 스냅 슬라이더 */}
-          <div 
-            ref={tabCarouselRef}
-            className="flex gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar pb-6 px-1"
-          >
+        {loadingGames ? (
+          <div className="flex justify-center py-24">
+            <div className="w-10 h-10 border-4 border-brand-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filteredGames.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">
+            <Gamepad2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="font-bold text-sm">해당 카테고리의 게임이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredGames.map((game) => (
-              <GameCard 
-                key={game.id} 
-                game={game} 
+              <GameCard
+                key={game.id}
+                game={game}
                 likes={likes}
                 onLike={handleLike}
                 onShare={handleShare}
               />
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* 2. 신규 추가 게임 캐러셀 */}
-      <section className="mb-16 relative group">
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <h3 className="text-xl sm:text-2xl font-black text-gray-800 flex items-center gap-2">
-              <Sparkles className="text-orange-500" /> 새롭게 추가된 마법 게임
-            </h3>
-            <p className="text-xs text-gray-500 font-bold mt-1">새로 기획되어 갓 출시된 재미있는 카드/프롬프트 교구입니다.</p>
-          </div>
-          
-          {/* 모바일 화면에서는 스크롤 인디케이터 제공 */}
-          <span className="text-[10px] font-black text-gray-400 sm:hidden uppercase tracking-wider">Swipe →</span>
-        </div>
-
-        <div className="relative">
-          <button 
-            onClick={() => scrollCarousel(newCarouselRef, 'left')}
-            className="absolute left-[-16px] top-1/2 -translate-y-1/2 z-10 p-3 bg-white/60 backdrop-blur-md hover:bg-white text-gray-700 border border-white/50 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 hidden sm:block"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          
-          <button 
-            onClick={() => scrollCarousel(newCarouselRef, 'right')}
-            className="absolute right-[-16px] top-1/2 -translate-y-1/2 z-10 p-3 bg-white/60 backdrop-blur-md hover:bg-white text-gray-700 border border-white/50 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 hidden sm:block"
-          >
-            <ChevronRight size={20} />
-          </button>
-
-          <div 
-            ref={newCarouselRef}
-            className="flex gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar pb-6 px-1"
-          >
-            {newGamesList.map((game) => (
-              <GameCard 
-                key={`new-${game.id}`} 
-                game={game} 
-                likes={likes}
-                onLike={handleLike}
-                onShare={handleShare}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 3. 인기 게임 캐러셀 */}
-      <section className="mb-20 relative group">
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <h3 className="text-xl sm:text-2xl font-black text-gray-800 flex items-center gap-2">
-              <Award className="text-yellow-500" /> 가장 인기 있는 마법 게임
-            </h3>
-            <p className="text-xs text-gray-500 font-bold mt-1">마법사들이 가장 즐겨 훈련하고 강력 추천한 대세 배틀입니다.</p>
-          </div>
-          <span className="text-[10px] font-black text-gray-400 sm:hidden uppercase tracking-wider">Swipe →</span>
-        </div>
-
-        <div className="relative">
-          <button 
-            onClick={() => scrollCarousel(popularCarouselRef, 'left')}
-            className="absolute left-[-16px] top-1/2 -translate-y-1/2 z-10 p-3 bg-white/60 backdrop-blur-md hover:bg-white text-gray-700 border border-white/50 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 hidden sm:block"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          
-          <button 
-            onClick={() => scrollCarousel(popularCarouselRef, 'right')}
-            className="absolute right-[-16px] top-1/2 -translate-y-1/2 z-10 p-3 bg-white/60 backdrop-blur-md hover:bg-white text-gray-700 border border-white/50 rounded-full shadow-lg transition-all hover:scale-110 active:scale-95 cursor-pointer opacity-0 group-hover:opacity-100 hidden sm:block"
-          >
-            <ChevronRight size={20} />
-          </button>
-
-          <div 
-            ref={popularCarouselRef}
-            className="flex gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar pb-6 px-1"
-          >
-            {popularGamesList.map((game) => (
-              <GameCard 
-                key={`popular-${game.id}`} 
-                game={game} 
-                likes={likes}
-                onLike={handleLike}
-                onShare={handleShare}
-              />
-            ))}
-          </div>
-        </div>
+        )}
       </section>
       
       {/* Footer */}

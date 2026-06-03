@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
@@ -57,6 +57,7 @@ const PlayCenter = () => {
   const [gamesList, setGamesList] = useState(PLAYABLE_GAMES);
   const [toast, setToast] = useState({ isVisible: false, message: '' });
   const navigate = useNavigate();
+  const toastTimerRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -192,8 +193,9 @@ const PlayCenter = () => {
   };
 
   const showToast = (message) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ isVisible: true, message });
-    setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
+    toastTimerRef.current = setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
   };
 
   const renderIcon = (iconName, colorClass) => {
@@ -214,7 +216,7 @@ const PlayCenter = () => {
       <header className="sticky top-4 z-50 flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-8 py-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl shadow-lg mb-12">
         <Link to="/" className="flex items-center gap-2 group self-start sm:self-auto">
           <Sparkles className="w-6 h-6 text-brand-primary group-hover:rotate-12 transition-transform" />
-          <span className="font-black text-xl tracking-tight text-gray-800">Prompt Arcade</span>
+          <span className="font-black text-xl tracking-tight text-gray-800">Playcraft</span>
         </Link>
 
         <nav className="flex items-center justify-between sm:justify-end gap-1 sm:gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100">
