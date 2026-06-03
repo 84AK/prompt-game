@@ -26,7 +26,8 @@ const PostCard = ({ post, likes, onLike, onShare, colorIdx }) => {
 
   const thumbUrl = post.media_url || post.image_url || post.prompt_data?.image_url;
   const cleanTitle = post.title?.replace(/^[\u{1F300}-\u{1FAFF}️\s]*\[.*?\]\s*/u, '').trim() || post.title || '제목 없음';
-  const contentPreview = post.content ? post.content.slice(0, 90) + (post.content.length > 90 ? '...' : '') : '';
+  const plainContent = post.content ? post.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+  const contentPreview = plainContent.length > 90 ? plainContent.slice(0, 90) + '...' : plainContent;
   const dateStr = post.created_at
     ? new Date(post.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     : '';

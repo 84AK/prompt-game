@@ -389,7 +389,7 @@ const PromptFeed = () => {
                   )}
 
                   <h3 className="font-black text-sm text-gray-900 leading-tight mb-2 group-hover:text-brand-primary transition-colors line-clamp-2">{post.title}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-4">{post.content}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-4">{post.content?.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()}</p>
 
                   <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                     <div className="flex items-center gap-1.5">
