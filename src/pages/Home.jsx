@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, LogOut, User as UserIcon, MessageSquare, Shield,
   Heart, Share2, Gamepad2, PenSquare, X, Link2, Video,
-  ImagePlus, Loader2
+  ImagePlus, Loader2, Copy, Bot
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -105,6 +105,7 @@ const Home = () => {
   const [registerForm, setRegisterForm] = useState({ title: '', content: '', image_url: '', link_url: '', youtube_url: '' });
   const [submittingRegister, setSubmittingRegister] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showPromptHelper, setShowPromptHelper] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -222,6 +223,7 @@ const Home = () => {
       return;
     }
     setRegisterForm({ title: '', content: '', image_url: '', link_url: '', youtube_url: '' });
+    setShowPromptHelper(false);
     setIsRegisterOpen(true);
   };
 
@@ -591,9 +593,71 @@ const Home = () => {
                 </div>
 
                 {/* ── 오른쪽 패널: 게임 설명 에디터 ── */}
-                <div className="flex-1 flex flex-col min-h-0 px-6 py-5 md:px-6">
-                  <label className="block text-xs font-black text-gray-700 mb-2">게임 설명 <span className="text-red-400">*</span></label>
-                  <div className="flex-1 flex flex-col min-h-0 [&_.ProseMirror]:flex-1 [&_.ProseMirror]:overflow-y-auto">
+                <div className="flex-1 flex flex-col min-h-0 px-6 py-5">
+                  {/* 라벨 + AI 도우미 버튼 */}
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-black text-gray-700">게임 설명 <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowPromptHelper(p => !p)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-xl text-[11px] font-black transition-all cursor-pointer"
+                      >
+                        <Bot size={12} /> AI 작성 도우미
+                      </button>
+
+                      {/* 팝오버 */}
+                      {showPromptHelper && (
+                        <div className="absolute right-0 top-9 w-80 sm:w-96 bg-white border border-purple-100 rounded-2xl shadow-2xl z-10 overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-3 bg-purple-50 border-b border-purple-100">
+                            <div className="flex items-center gap-2 text-purple-700 font-black text-xs">
+                              <Bot size={14} /> AI 작성 도우미 프롬프트
+                            </div>
+                            <button type="button" onClick={() => setShowPromptHelper(false)} className="text-purple-400 hover:text-purple-600 cursor-pointer">
+                              <X size={14} />
+                            </button>
+                          </div>
+                          <div className="px-4 py-3">
+                            <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+                              아래 프롬프트를 복사해서 <strong>ChatGPT</strong>나 <strong>Gemini</strong>에 붙여넣고,
+                              게임 정보를 채워보세요!
+                            </p>
+                            <pre className="text-[10px] leading-relaxed bg-gray-50 border border-gray-200 rounded-xl p-3 whitespace-pre-wrap text-gray-600 max-h-56 overflow-y-auto font-sans">{`당신은 창의적인 게임 디자이너이자 글쓰기 전문가입니다.
+아래 게임 정보를 바탕으로 누구나 쉽게 이해하고 바로 플레이할 수 있는 생생한 게임 설명서를 한국어로 작성해주세요.
+
+📌 게임 기본 정보 (아래 내용을 채워서 AI에 전달하세요)
+- 게임 이름:
+- 게임 핵심 아이디어:
+- 플레이어 수:
+- 준비물 (있다면):
+- 기타 특이사항:
+
+✍️ 작성 형식:
+## 🎮 게임 소개
+## 👥 참여 인원 & 대상
+## 🛠️ 준비물
+## 📜 게임 방법 (단계별)
+## 🏆 승리 조건
+## 💡 꿀팁 & 변형 규칙`}</pre>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const prompt = `당신은 창의적인 게임 디자이너이자 글쓰기 전문가입니다.\n아래 게임 정보를 바탕으로 누구나 쉽게 이해하고 바로 플레이할 수 있는 생생한 게임 설명서를 한국어로 작성해주세요.\n\n📌 게임 기본 정보 (아래 내용을 채워서 AI에 전달하세요)\n- 게임 이름: \n- 게임 핵심 아이디어: \n- 플레이어 수: \n- 준비물 (있다면): \n- 기타 특이사항: \n\n✍️ 작성 형식:\n## 🎮 게임 소개\n## 👥 참여 인원 & 대상\n## 🛠️ 준비물\n## 📜 게임 방법 (단계별)\n## 🏆 승리 조건\n## 💡 꿀팁 & 변형 규칙`;
+                                navigator.clipboard.writeText(prompt)
+                                  .then(() => { showToast('✅ 프롬프트가 복사됐습니다! AI에 붙여넣어 보세요.'); setShowPromptHelper(false); })
+                                  .catch(() => showToast('복사 실패. 직접 선택해서 복사해 주세요.'));
+                              }}
+                              className="mt-3 w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all"
+                            >
+                              <Copy size={12} /> 프롬프트 복사하기
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 flex flex-col min-h-0">
                     <RichEditor
                       value={registerForm.content}
                       onChange={val => setRegisterForm(p => ({ ...p, content: val }))}
