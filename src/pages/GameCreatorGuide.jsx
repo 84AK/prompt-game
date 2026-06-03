@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Sparkles, ArrowLeft, Gamepad2, Users, Send, Loader2, 
-  BookOpen, Dice5, Swords, ShieldCheck, Heart, Share2, Clipboard, ChevronRight
+import {
+  Sparkles, ArrowLeft, Gamepad2, Users, Send, Loader2,
+  BookOpen, Dice5, Swords, ShieldCheck, Heart, Share2, Clipboard, ChevronRight,
+  Bot, Copy, X
 } from 'lucide-react';
 
 const GameCreatorGuide = () => {
@@ -26,6 +27,7 @@ const GameCreatorGuide = () => {
   const [generating, setGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState('');
   const [submittingFeed, setSubmittingFeed] = useState(false);
+  const [showAiHelper, setShowAiHelper] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -265,7 +267,72 @@ const GameCreatorGuide = () => {
             </div>
 
             <div className="space-y-4 pt-2">
-              <h4 className="text-xs font-black text-purple-600 uppercase tracking-widest border-l-4 border-purple-500 pl-2">RCTF 마법 파편 조립</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-purple-600 uppercase tracking-widest border-l-4 border-purple-500 pl-2">RCTF 마법 파편 조립</h4>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowAiHelper(p => !p)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-xl text-[11px] font-black transition-all cursor-pointer"
+                  >
+                    <Bot size={12} /> AI 아이디어 도우미
+                  </button>
+
+                  {showAiHelper && (
+                    <div className="absolute right-0 top-9 w-80 sm:w-[420px] bg-white border border-purple-100 rounded-2xl shadow-2xl z-10 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 bg-purple-50 border-b border-purple-100">
+                        <div className="flex items-center gap-2 text-purple-700 font-black text-xs">
+                          <Bot size={14} /> RCTF 아이디어 도우미 프롬프트
+                        </div>
+                        <button type="button" onClick={() => setShowAiHelper(false)} className="text-purple-400 hover:text-purple-600 cursor-pointer">
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+                          아래 프롬프트를 복사해서 <strong>ChatGPT</strong>나 <strong>Gemini</strong>에 붙여넣고,
+                          내 게임 아이디어를 설명해 보세요. AI가 Role·Context·Task·Format을 대신 채워줍니다!
+                        </p>
+                        <pre className="text-[10px] leading-relaxed bg-gray-50 border border-gray-200 rounded-xl p-3 whitespace-pre-wrap text-gray-600 max-h-64 overflow-y-auto font-sans">{`나는 오프라인 카드/보드 게임 아이디어가 있어.
+아래 내 게임 아이디어를 기반으로 RCTF 게임 입력칸에 넣을 내용을 만들어줘.
+
+💡 내 게임 아이디어:
+(여기에 게임 아이디어를 자유롭게 설명해줘)
+
+아래 4가지 항목을 구체적이고 창의적으로 작성해줘:
+
+👤 Role (플레이어 역할):
+→ 플레이어들이 이입할 캐릭터나 마법 직업
+예) 2학년 3반 비밀 정보원, 침묵의 마법 헌터
+
+🌍 Context (게임 상황):
+→ 게임이 시작되는 위기 상황이나 무대
+예) 와이파이가 차단된 비밀 방, 어두운 마법 도서관
+
+🎯 Task (목표 미션):
+→ 승리하기 위해 팀이 해야 할 행동
+예) 숨겨진 마법 카드 5종 조합하기
+
+🎨 Format (결과 형식):
+→ 최종 결과물을 어떻게 표현할지
+예) 말과 그림, 온몸 연출 동작, 즉흥 연기`}</pre>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const prompt = `나는 오프라인 카드/보드 게임 아이디어가 있어.\n아래 내 게임 아이디어를 기반으로 RCTF 게임 입력칸에 넣을 내용을 만들어줘.\n\n💡 내 게임 아이디어:\n(여기에 게임 아이디어를 자유롭게 설명해줘)\n\n아래 4가지 항목을 구체적이고 창의적으로 작성해줘:\n\n👤 Role (플레이어 역할):\n→ 플레이어들이 이입할 캐릭터나 마법 직업\n예) 2학년 3반 비밀 정보원, 침묵의 마법 헌터\n\n🌍 Context (게임 상황):\n→ 게임이 시작되는 위기 상황이나 무대\n예) 와이파이가 차단된 비밀 방, 어두운 마법 도서관\n\n🎯 Task (목표 미션):\n→ 승리하기 위해 팀이 해야 할 행동\n예) 숨겨진 마법 카드 5종 조합하기\n\n🎨 Format (결과 형식):\n→ 최종 결과물을 어떻게 표현할지\n예) 말과 그림, 온몸 연출 동작, 즉흥 연기`;
+                            navigator.clipboard.writeText(prompt)
+                              .then(() => { showToast('✅ 프롬프트 복사 완료! ChatGPT나 Gemini에 붙여넣어 보세요.'); setShowAiHelper(false); })
+                              .catch(() => showToast('복사 실패. 직접 선택해서 복사해 주세요.'));
+                          }}
+                          className="mt-3 w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition-all"
+                        >
+                          <Copy size={12} /> 프롬프트 복사하기
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               
               <div>
                 <label className="text-xs font-black text-gray-500 mb-1.5 block">👤 Role (플레이어의 고유 마법 직업이나 신분)</label>
