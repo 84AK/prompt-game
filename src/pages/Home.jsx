@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, LogOut, User as UserIcon, MessageSquare, Shield,
-  Heart, Share2, Gamepad2, PenSquare
+  Heart, Share2, Gamepad2, PenSquare, X, Link2, Video,
+  ImagePlus, Loader2
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -22,6 +23,7 @@ const PostCard = ({ post, likes, onLike, onShare, colorIdx }) => {
   const grad = POST_COLORS[colorIdx % POST_COLORS.length];
   const postLikes = likes[post.id] ?? post.likes_count ?? 0;
 
+  const thumbUrl = post.image_url || post.prompt_data?.image_url;
   const cleanTitle = post.title?.replace(/^[\u{1F300}-\u{1FAFF}️\s]*\[.*?\]\s*/u, '').trim() || post.title || '제목 없음';
   const contentPreview = post.content ? post.content.slice(0, 90) + (post.content.length > 90 ? '...' : '') : '';
   const dateStr = post.created_at
@@ -44,9 +46,9 @@ const PostCard = ({ post, likes, onLike, onShare, colorIdx }) => {
           className="w-full h-36 rounded-xl overflow-hidden mb-4 flex items-center justify-center"
           style={{ background: `linear-gradient(135deg, ${grad.from}22, ${grad.to}22)` }}
         >
-          {post.image_url ? (
+          {thumbUrl ? (
             <img
-              src={post.image_url}
+              src={thumbUrl}
               alt={cleanTitle}
               loading="lazy"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -98,6 +100,11 @@ const Home = () => {
   const [toast, setToast] = useState({ isVisible: false, message: '' });
   const [postsList, setPostsList] = useState([]);
   const [loadingGames, setLoadingGames] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ title: '', content: '', image_url: '', link_url: '', youtube_url: '' });
+  const [submittingRegister, setSubmittingRegister] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   const toastTimerRef = useRef(null);
@@ -205,6 +212,69 @@ const Home = () => {
     navigator.clipboard.writeText(shareUrl)
       .then(() => showToast('📋 게임 링크가 클립보드에 복사되었습니다!'))
       .catch(() => showToast('링크 복사에 실패했습니다.'));
+  };
+
+  const openRegisterModal = () => {
+    if (!user) {
+      showToast('게임을 등록하려면 먼저 로그인해 주세요!');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    setRegisterForm({ title: '', content: '', image_url: '', link_url: '', youtube_url: '' });
+    setIsRegisterOpen(true);
+  };
+
+  const handleRegisterImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('이미지는 최대 5MB까지 가능합니다.'); return; }
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('game-assets').upload(fileName, file, { cacheControl: '3600', upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('game-assets').getPublicUrl(fileName);
+      setRegisterForm(prev => ({ ...prev, image_url: publicUrl }));
+      showToast('이미지 업로드 완료! ✅');
+    } catch (err) {
+      showToast('이미지 업로드 실패: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (!registerForm.title.trim() || !registerForm.content.trim()) {
+      showToast('제목과 설명은 필수입니다!');
+      return;
+    }
+    setSubmittingRegister(true);
+    const authorName = profile?.display_name || user?.email?.split('@')[0] || '익명';
+    const promptData = {
+      image_url: registerForm.image_url.trim(),
+      link_url: registerForm.link_url.trim(),
+      youtube_url: registerForm.youtube_url.trim(),
+    };
+    try {
+      const { error } = await supabase.from('posts').insert([{
+        user_id: user.id,
+        author_name: authorName,
+        title: registerForm.title.trim(),
+        content: registerForm.content.trim(),
+        prompt_data: promptData,
+        likes_count: 0,
+      }]);
+      if (error) throw error;
+      showToast('게임이 갤러리에 등록됐습니다! 🎉');
+      setIsRegisterOpen(false);
+      fetchPosts();
+    } catch (err) {
+      showToast('등록 실패: ' + err.message);
+    } finally {
+      setSubmittingRegister(false);
+    }
   };
 
   const showToast = (message) => {
@@ -373,7 +443,7 @@ const Home = () => {
             <p className="text-xs sm:text-sm text-gray-500 mt-1">크리에이터들이 직접 만들고 공유한 게임 모음</p>
           </div>
           <button
-            onClick={() => navigate('/creator-guide')}
+            onClick={openRegisterModal}
             className="flex items-center gap-2 px-4 py-2 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary rounded-2xl text-xs font-black transition-all cursor-pointer"
           >
             <PenSquare size={13} /> 게임 등록하기
@@ -406,6 +476,135 @@ const Home = () => {
         )}
       </section>
       
+      {/* 게임 등록 모달 */}
+      <AnimatePresence>
+        {isRegisterOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsRegisterOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25 }}
+              className="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* 모달 헤더 */}
+              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Gamepad2 className="text-brand-primary w-5 h-5" />
+                  <span className="font-black text-gray-900">게임 등록하기</span>
+                </div>
+                <button onClick={() => setIsRegisterOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl cursor-pointer text-gray-400">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* 폼 */}
+              <form onSubmit={handleRegisterSubmit} className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                {/* 제목 */}
+                <div>
+                  <label className="block text-xs font-black text-gray-700 mb-1.5">게임 제목 <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="예: 마법사의 주문 배틀"
+                    value={registerForm.title}
+                    onChange={e => setRegisterForm(p => ({ ...p, title: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
+                    required
+                  />
+                </div>
+
+                {/* 설명 */}
+                <div>
+                  <label className="block text-xs font-black text-gray-700 mb-1.5">게임 설명 <span className="text-red-400">*</span></label>
+                  <textarea
+                    placeholder="게임 방법, 규칙, 재미 포인트를 자유롭게 적어보세요."
+                    value={registerForm.content}
+                    onChange={e => setRegisterForm(p => ({ ...p, content: e.target.value }))}
+                    rows={4}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all resize-none"
+                    required
+                  />
+                </div>
+
+                {/* 이미지 업로드 */}
+                <div>
+                  <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                    <ImagePlus size={13} /> 이미지 업로드 <span className="text-gray-400 font-normal">(선택)</span>
+                  </label>
+                  <input type="file" accept="image/*" ref={fileInputRef} onChange={handleRegisterImageUpload} className="hidden" />
+                  {registerForm.image_url ? (
+                    <div className="relative w-full h-32 rounded-xl overflow-hidden border border-gray-200">
+                      <img src={registerForm.image_url} alt="preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setRegisterForm(p => ({ ...p, image_url: '' }))}
+                        className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      className="w-full py-3 border-2 border-dashed border-gray-200 hover:border-brand-primary rounded-xl text-xs font-bold text-gray-400 hover:text-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                      {uploadingImage ? '업로드 중...' : '이미지 선택'}
+                    </button>
+                  )}
+                </div>
+
+                {/* 링크 URL */}
+                <div>
+                  <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                    <Link2 size={13} /> 링크 URL <span className="text-gray-400 font-normal">(선택)</span>
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={registerForm.link_url}
+                    onChange={e => setRegisterForm(p => ({ ...p, link_url: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* 유튜브 URL */}
+                <div>
+                  <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                    <Video size={13} className="text-red-500" /> 유튜브 영상 URL <span className="text-gray-400 font-normal">(선택)</span>
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://youtube.com/watch?v=..."
+                    value={registerForm.youtube_url}
+                    onChange={e => setRegisterForm(p => ({ ...p, youtube_url: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* 제출 버튼 */}
+                <button
+                  type="submit"
+                  disabled={submittingRegister || uploadingImage}
+                  className="w-full py-3.5 bg-gray-900 hover:bg-brand-primary text-white rounded-xl font-black text-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submittingRegister ? <><Loader2 size={15} className="animate-spin" /> 등록 중...</> : '🎮 갤러리에 등록하기'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Footer */}
       <footer className="mt-auto text-center border-t border-gray-100 pt-12 pb-6">
         <p className="text-gray-400 text-sm mb-4">© 2026 AK Labs Prompt Game. All rights reserved.</p>
