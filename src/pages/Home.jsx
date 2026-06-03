@@ -8,6 +8,7 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import heroImg from '../assets/hero.png';
+import RichEditor from '../components/RichEditor';
 
 const POST_COLORS = [
   { from: '#f87171', to: '#ef4444' },
@@ -526,13 +527,10 @@ const Home = () => {
                 {/* 설명 */}
                 <div>
                   <label className="block text-xs font-black text-gray-700 mb-1.5">게임 설명 <span className="text-red-400">*</span></label>
-                  <textarea
-                    placeholder="게임 방법, 규칙, 재미 포인트를 자유롭게 적어보세요."
+                  <RichEditor
                     value={registerForm.content}
-                    onChange={e => setRegisterForm(p => ({ ...p, content: e.target.value }))}
-                    rows={4}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all resize-none"
-                    required
+                    onChange={val => setRegisterForm(p => ({ ...p, content: val }))}
+                    placeholder="게임 방법, 규칙, 재미 포인트를 자유롭게 적어보세요."
                   />
                 </div>
 

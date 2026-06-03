@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import RichEditor from '../components/RichEditor';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -454,7 +455,10 @@ const PromptDetail = () => {
 
         {/* 7. Main 설명 및 내용 */}
         <div className="prose max-w-none mb-12">
-          <p className="text-sm sm:text-base text-gray-600 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+          <div
+            className="prose prose-sm max-w-none text-gray-600 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
         </div>
 
         {/* 5. Footer Social Interaction Bar */}
@@ -520,11 +524,10 @@ const PromptDetail = () => {
 
                 <div>
                   <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Content</label>
-                  <textarea
-                    rows="5"
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all leading-relaxed"
+                  <RichEditor
                     value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    onChange={val => setFormData(prev => ({ ...prev, content: val }))}
+                    placeholder="게임 설명을 입력하세요."
                   />
                 </div>
 
