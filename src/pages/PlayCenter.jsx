@@ -231,7 +231,7 @@ const PlayCenter = () => {
             to="/feed"
             className="flex items-center gap-1.5 px-2 sm:px-3 py-2 hover:bg-gray-100/50 rounded-xl text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
           >
-            <MessageSquare size={16} /> <span className="hidden sm:inline">피드 자랑</span>
+            <MessageSquare size={16} /> <span className="hidden sm:inline">커뮤니티</span>
           </Link>
 
           <Link

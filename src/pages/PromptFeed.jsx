@@ -88,6 +88,7 @@ const PromptFeed = () => {
       const { data, error } = await supabase
         .from('posts')
         .select('*')
+        .eq('post_type', 'feed')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -216,7 +217,7 @@ const PromptFeed = () => {
           title: formData.title.trim(),
           content: formData.content.trim(),
           prompt_data: finalPromptObj,
-          likes_count: 0
+          post_type: 'feed',
         }]);
 
       if (error) throw error;
@@ -322,10 +323,10 @@ const PromptFeed = () => {
       <section className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-gray-100 pb-8">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-primary/10 rounded-full mb-3 text-[10px] sm:text-xs font-bold text-brand-primary border border-brand-primary/20">
-            <MessageSquare size={14} /> GAME CREATOR FEED
+            <MessageSquare size={14} /> COMMUNITY
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight leading-none">게임 소개 & 공유 피드</h1>
-          <p className="text-xs sm:text-sm text-gray-500 font-bold mt-2">직접 기획한 AI 게임, 언플러그드 교구 게임을 이미지·영상·링크와 함께 소개해 보세요.</p>
+          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight leading-none">커뮤니티</h1>
+          <p className="text-xs sm:text-sm text-gray-500 font-bold mt-2">게임 플레이 후기, 수업 사진, 소감을 자유롭게 나눠보세요.</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -333,7 +334,7 @@ const PromptFeed = () => {
           onClick={openWriteModal}
           className="w-full sm:w-auto px-6 py-4 bg-brand-primary hover:brightness-110 text-white rounded-2xl font-black shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all text-xs sm:text-sm"
         >
-          <Plus size={18} /> 게임 소개 올리기
+          <Plus size={18} /> 글 올리기
         </motion.button>
       </section>
 
@@ -346,8 +347,8 @@ const PromptFeed = () => {
       ) : posts.length === 0 ? (
         <div className="text-center py-24 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-lg mx-auto p-10">
           <Info className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-          <h3 className="text-lg font-black text-gray-700">아직 공유된 게임이 없습니다</h3>
-          <p className="text-xs text-gray-400 font-bold mt-1">첫 번째로 게임을 소개해 보세요!</p>
+          <h3 className="text-lg font-black text-gray-700">아직 올라온 글이 없습니다</h3>
+          <p className="text-xs text-gray-400 font-bold mt-1">게임 후기나 소감을 첫 번째로 나눠보세요!</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">

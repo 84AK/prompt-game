@@ -126,6 +126,7 @@ const GameCreatorGuide = () => {
           title: `🛠️ [게임 아케이드 창작소] ${gameTitle}`,
           content: generatedPlan,
           author_name: displayName,
+          post_type: 'game',
           created_at: new Date().toISOString()
         }
       ]);
