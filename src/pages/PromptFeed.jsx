@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import RichEditor from '../components/RichEditor';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -434,67 +435,32 @@ const PromptFeed = () => {
               </button>
               
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-brand-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="text-brand-primary" size={28} />
+                <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="text-teal-500" size={28} />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black">나만의 프롬프트 마법 공유</h3>
-                <p className="text-gray-500 font-bold text-xs sm:text-sm mt-1">조합했던 카드 키워드를 넣으면 멋진 카드로 표시됩니다!</p>
+                <h3 className="text-xl sm:text-2xl font-black">커뮤니티에 글 올리기</h3>
+                <p className="text-gray-500 font-bold text-xs sm:text-sm mt-1">게임 플레이 후기, 수업 사진, 소감을 자유롭게 나눠보세요!</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Title (제목)</label>
-                  <input 
-                    type="text" 
-                    placeholder="글의 매력적인 제목을 정해보세요!" 
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all placeholder:text-gray-300" 
-                    value={formData.title} 
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })} 
+                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">제목</label>
+                  <input
+                    type="text"
+                    placeholder="예: 오늘 수업에서 RCTF 카드 배틀 해봤어요!"
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all placeholder:text-gray-300"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">RCTF Card Combination (선택 카드 조합)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Role" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-red-500"
-                      value={formData.r} 
-                      onChange={(e) => setFormData({ ...formData, r: e.target.value })} 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Context" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-blue-500"
-                      value={formData.c} 
-                      onChange={(e) => setFormData({ ...formData, c: e.target.value })} 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Task" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-yellow-500"
-                      value={formData.t} 
-                      onChange={(e) => setFormData({ ...formData, t: e.target.value })} 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Format" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-green-500"
-                      value={formData.f} 
-                      onChange={(e) => setFormData({ ...formData, f: e.target.value })} 
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Content (상세 설명 & 게임 소개)</label>
-                  <textarea
-                    rows="5"
-                    placeholder="게임 규칙, 플레이 방법, AI와 나눈 신기한 결과물, 꿀팁 등을 자유롭게 소개해 주세요!"
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all placeholder:text-gray-300 whitespace-pre-wrap leading-relaxed"
+                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">내용</label>
+                  <RichEditor
                     value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    onChange={val => setFormData(prev => ({ ...prev, content: val }))}
+                    placeholder="플레이 후기, 수업 소감, 재미있었던 순간 등을 자유롭게 적어보세요!"
+                    minHeight="160px"
                   />
                 </div>
 
@@ -548,7 +514,7 @@ const PromptFeed = () => {
                     </label>
                     <input
                       type="url"
-                      placeholder="https://... (게임 링크, 참고 자료 등)"
+                      placeholder="https://... (관련 링크, 참고 자료 등)"
                       className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-green-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300"
                       value={formData.link_url}
                       onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
@@ -563,7 +529,7 @@ const PromptFeed = () => {
                   disabled={submitting || uploadingImage}
                   className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
                 >
-                  {submitting ? <Loader2 className="animate-spin" /> : <><Send size={18} /> 게임 소개 등록하기</>}
+                  {submitting ? <Loader2 className="animate-spin" /> : <><Send size={18} /> 커뮤니티에 올리기</>}
                 </motion.button>
               </form>
             </motion.div>
