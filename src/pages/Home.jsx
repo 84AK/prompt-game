@@ -234,7 +234,7 @@ const Home = () => {
       const fileName = `posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage
         .from('game-assets')
-        .upload(fileName, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+        .upload(fileName, file, { cacheControl: '3600', contentType: file.type });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('game-assets').getPublicUrl(fileName);
       setRegisterForm(prev => ({ ...prev, image_url: publicUrl }));
