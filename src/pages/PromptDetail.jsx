@@ -153,25 +153,29 @@ const PromptDetail = () => {
       .catch(() => showToast('링크 복사에 실패했습니다.'));
   };
 
+  // 삭제 후 이동할 경로 (game → 홈, feed → 커뮤니티)
+  const returnPath = post?.post_type === 'game' ? '/' : '/feed';
+
   // 상세 페이지 내 삭제
   const handleDelete = async () => {
     if (!post || !window.confirm('정말로 이 글을 완전히 삭제하시겠습니까?')) return;
+
+    // 권한 재확인
+    const isAdmin = profile?.role === 'ADMIN' || sessionStorage.getItem('rctf_admin_auth') === 'true';
+    const isAuthor = user?.id === post.user_id;
+    if (!isAuthor && !isAdmin) {
+      showToast('삭제 권한이 없습니다.');
+      return;
+    }
 
     try {
       const { error } = await supabase.from('posts').delete().eq('id', post.id);
       if (error) throw error;
       showToast('삭제 완료되었습니다.');
-      setTimeout(() => navigate('/feed'), 1000);
+      setTimeout(() => navigate(returnPath), 800);
     } catch (err) {
-      // Mockup 삭제
-      const localData = localStorage.getItem('mockup_posts');
-      if (localData) {
-        const postsArray = JSON.parse(localData);
-        const filtered = postsArray.filter(p => p.id !== post.id);
-        localStorage.setItem('mockup_posts', JSON.stringify(filtered));
-      }
-      showToast('로컬 임시 삭제 완료.');
-      setTimeout(() => navigate('/feed'), 1000);
+      console.error('삭제 실패:', err.message);
+      showToast('삭제 실패: ' + err.message);
     }
   };
 
@@ -313,7 +317,7 @@ const PromptDetail = () => {
 
       <header className="sticky top-4 z-50 flex items-center justify-between px-6 py-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl shadow-lg mb-12">
         <button 
-          onClick={() => navigate('/feed')}
+          onClick={() => navigate(returnPath)}
           className="flex items-center gap-2 text-gray-400 hover:text-gray-800 font-bold transition-all group text-xs sm:text-sm cursor-pointer"
         >
           <ChevronLeft className="group-hover:-translate-x-1 transition-transform" /> 목록으로
