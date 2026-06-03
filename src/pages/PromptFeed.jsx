@@ -422,115 +422,121 @@ const PromptFeed = () => {
         {isWriteOpen && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-6 sm:p-10 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto border border-white/50"
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25 }}
+              className="w-full max-w-lg md:max-w-5xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:h-[88vh]"
+              onClick={e => e.stopPropagation()}
             >
-              <button 
-                onClick={closeModal} 
-                className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-all cursor-pointer"
-              >
-                <X size={24} className="text-gray-400" />
-              </button>
-              
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <MessageSquare className="text-teal-500" size={28} />
+              {/* 헤더 */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="text-teal-500 w-5 h-5" />
+                  <span className="font-black text-gray-900">커뮤니티에 글 올리기</span>
+                  <span className="text-xs text-gray-400 font-bold hidden sm:inline">— 후기, 수업 사진, 소감을 나눠보세요</span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black">커뮤니티에 글 올리기</h3>
-                <p className="text-gray-500 font-bold text-xs sm:text-sm mt-1">게임 플레이 후기, 수업 사진, 소감을 자유롭게 나눠보세요!</p>
+                <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-xl cursor-pointer text-gray-400">
+                  <X size={16} />
+                </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">제목</label>
-                  <input
-                    type="text"
-                    placeholder="예: 오늘 수업에서 RCTF 카드 배틀 해봤어요!"
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 focus:border-brand-primary rounded-2xl outline-none font-bold text-sm sm:text-base text-gray-700 transition-all placeholder:text-gray-300"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  />
-                </div>
+              {/* 폼 — 모바일: 1컬럼 / 데스크탑: 2컬럼 */}
+              <form onSubmit={handleSubmit} className="flex flex-col md:flex-row flex-1 min-h-0">
 
-                <div>
-                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">내용</label>
-                  <RichEditor
-                    value={formData.content}
-                    onChange={val => setFormData(prev => ({ ...prev, content: val }))}
-                    placeholder="플레이 후기, 수업 소감, 재미있었던 순간 등을 자유롭게 적어보세요!"
-                    minHeight="160px"
-                  />
-                </div>
+                {/* ── 왼쪽: 제목 / 이미지 / 링크 ── */}
+                <div className="md:w-80 lg:w-96 shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-gray-100">
+                  <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
 
-                {/* 미디어 첨부 섹션 */}
-                <div className="space-y-3 p-5 bg-gray-50/80 rounded-2xl border border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <ImageIcon size={12} /> 미디어 첨부 (선택)
-                  </p>
+                    {/* 제목 */}
+                    <div>
+                      <label className="block text-xs font-black text-gray-700 mb-1.5">제목 <span className="text-red-400">*</span></label>
+                      <input
+                        type="text"
+                        placeholder="예: 오늘 수업에서 RCTF 카드 배틀 해봤어요!"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-teal-400 focus:bg-white transition-all"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        required
+                      />
+                    </div>
 
-                  {/* 이미지 업로드 */}
-                  <div>
-                    <label className="text-xs font-black text-gray-500 mb-1.5 block flex items-center gap-1">
-                      <ImageIcon size={12} className="text-blue-400" /> 이미지 업로드
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-xl cursor-pointer transition-all text-xs font-bold text-gray-500 hover:text-blue-500">
-                        {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                        {uploadingImage ? '업로드 중...' : '파일 선택'}
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+                    {/* 이미지 업로드 */}
+                    <div>
+                      <label className="text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <ImageIcon size={13} className="text-blue-400" /> 이미지 <span className="text-gray-400 font-normal">(선택)</span>
                       </label>
-                      {formData.image_url && (
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <img src={formData.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-100 shrink-0" />
-                          <span className="text-[10px] text-green-600 font-black truncate">업로드 완료 ✅</span>
-                          <button type="button" onClick={() => setFormData(p => ({ ...p, image_url: '' }))} className="p-1 hover:bg-red-50 rounded-lg text-gray-300 hover:text-red-400 cursor-pointer shrink-0">
-                            <X size={12} />
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-xl cursor-pointer transition-all text-xs font-bold text-gray-500 hover:text-blue-500">
+                          {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                          {uploadingImage ? '업로드 중...' : '파일 선택'}
+                          <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+                        </label>
+                        {formData.image_url && (
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <img src={formData.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-100 shrink-0" />
+                            <span className="text-[10px] text-green-600 font-black truncate">완료 ✅</span>
+                            <button type="button" onClick={() => setFormData(p => ({ ...p, image_url: '' }))} className="p-1 hover:bg-red-50 rounded-lg text-gray-300 hover:text-red-400 cursor-pointer shrink-0">
+                              <X size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 유튜브 URL */}
+                    <div>
+                      <label className="text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <PlayCircle size={13} className="text-red-500" /> 유튜브 URL <span className="text-gray-400 font-normal">(선택)</span>
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-red-400 focus:bg-white transition-all"
+                        value={formData.youtube_url}
+                        onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })}
+                      />
+                    </div>
+
+                    {/* 외부 링크 */}
+                    <div>
+                      <label className="text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <LinkIcon size={13} className="text-green-500" /> 링크 URL <span className="text-gray-400 font-normal">(선택)</span>
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://... (관련 링크, 참고 자료 등)"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:bg-white transition-all"
+                        value={formData.link_url}
+                        onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
+                      />
                     </div>
                   </div>
 
-                  {/* YouTube URL */}
-                  <div>
-                    <label className="text-xs font-black text-gray-500 mb-1.5 block flex items-center gap-1">
-                      <PlayCircle size={12} className="text-red-500" /> 유튜브 영상 URL
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-red-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300"
-                      value={formData.youtube_url}
-                      onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })}
-                    />
-                  </div>
-
-                  {/* 외부 링크 */}
-                  <div>
-                    <label className="text-xs font-black text-gray-500 mb-1.5 block flex items-center gap-1">
-                      <LinkIcon size={12} className="text-green-500" /> 관련 링크 URL
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="https://... (관련 링크, 참고 자료 등)"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-green-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300"
-                      value={formData.link_url}
-                      onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-                    />
+                  {/* 등록 버튼 */}
+                  <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+                    <button
+                      type="submit"
+                      disabled={submitting || uploadingImage}
+                      className="w-full py-3.5 bg-gray-900 hover:bg-teal-600 text-white rounded-xl font-black text-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {submitting ? <><Loader2 size={15} className="animate-spin" /> 등록 중...</> : <><Send size={15} /> 커뮤니티에 올리기</>}
+                    </button>
                   </div>
                 </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  type="submit"
-                  disabled={submitting || uploadingImage}
-                  className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-base shadow-lg flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
-                >
-                  {submitting ? <Loader2 className="animate-spin" /> : <><Send size={18} /> 커뮤니티에 올리기</>}
-                </motion.button>
+                {/* ── 오른쪽: 내용 에디터 ── */}
+                <div className="flex-1 flex flex-col min-h-0 px-6 py-5">
+                  <label className="block text-xs font-black text-gray-700 mb-2">내용 <span className="text-red-400">*</span></label>
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <RichEditor
+                      value={formData.content}
+                      onChange={val => setFormData(prev => ({ ...prev, content: val }))}
+                      placeholder="플레이 후기, 수업 소감, 재미있었던 순간 등을 자유롭게 적어보세요!"
+                      minHeight="300px"
+                    />
+                  </div>
+                </div>
               </form>
             </motion.div>
           </div>
