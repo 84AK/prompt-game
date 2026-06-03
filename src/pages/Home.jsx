@@ -230,15 +230,18 @@ const Home = () => {
     if (file.size > 5 * 1024 * 1024) { showToast('이미지는 최대 5MB까지 가능합니다.'); return; }
     setUploadingImage(true);
     try {
-      const ext = file.name.split('.').pop();
+      const ext = file.name.split('.').pop().toLowerCase();
       const fileName = `posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('game-assets').upload(fileName, file, { cacheControl: '3600', upsert: true });
+      const { error } = await supabase.storage
+        .from('game-assets')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true, contentType: file.type });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('game-assets').getPublicUrl(fileName);
       setRegisterForm(prev => ({ ...prev, image_url: publicUrl }));
       showToast('이미지 업로드 완료! ✅');
     } catch (err) {
-      showToast('이미지 업로드 실패: ' + err.message);
+      console.error('업로드 실패 상세:', err);
+      showToast('이미지 업로드 실패: ' + (err.message || JSON.stringify(err)));
     } finally {
       setUploadingImage(false);
     }
@@ -533,33 +536,43 @@ const Home = () => {
                   />
                 </div>
 
-                {/* 이미지 업로드 */}
+                {/* 이미지 */}
                 <div>
                   <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
-                    <ImagePlus size={13} /> 이미지 업로드 <span className="text-gray-400 font-normal">(선택)</span>
+                    <ImagePlus size={13} /> 이미지 <span className="text-gray-400 font-normal">(선택)</span>
                   </label>
                   <input type="file" accept="image/*" ref={fileInputRef} onChange={handleRegisterImageUpload} className="hidden" />
+
                   {registerForm.image_url ? (
                     <div className="relative w-full h-32 rounded-xl overflow-hidden border border-gray-200">
                       <img src={registerForm.image_url} alt="preview" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setRegisterForm(p => ({ ...p, image_url: '' }))}
-                        className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full cursor-pointer"
-                      >
+                      <button type="button" onClick={() => setRegisterForm(p => ({ ...p, image_url: '' }))}
+                        className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full cursor-pointer">
                         <X size={12} />
                       </button>
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingImage}
-                      className="w-full py-3 border-2 border-dashed border-gray-200 hover:border-brand-primary rounded-xl text-xs font-bold text-gray-400 hover:text-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
-                      {uploadingImage ? '업로드 중...' : '이미지 선택'}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="w-full py-3 border-2 border-dashed border-gray-200 hover:border-brand-primary rounded-xl text-xs font-bold text-gray-400 hover:text-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                        {uploadingImage ? '업로드 중...' : '파일 업로드'}
+                      </button>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                        <div className="flex-1 h-px bg-gray-200" /><span>또는 URL 직접 입력</span><div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                      <input
+                        type="url"
+                        placeholder="https://... (이미지 주소)"
+                        value={registerForm.image_url}
+                        onChange={e => setRegisterForm(p => ({ ...p, image_url: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
+                      />
+                    </div>
                   )}
                 </div>
 
