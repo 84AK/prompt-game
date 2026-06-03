@@ -494,40 +494,6 @@ const PromptDetail = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">RCTF Card Combination</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Role" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-red-500"
-                      value={formData.r} 
-                      onChange={(e) => setFormData({ ...formData, r: e.target.value })} 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Context" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-blue-500"
-                      value={formData.c} 
-                      onChange={(e) => setFormData({ ...formData, c: e.target.value })} 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Task" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-yellow-500"
-                      value={formData.t} 
-                      onChange={(e) => setFormData({ ...formData, t: e.target.value })} 
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Format" 
-                      className="px-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl outline-none font-bold text-xs text-green-500"
-                      value={formData.f} 
-                      onChange={(e) => setFormData({ ...formData, f: e.target.value })} 
-                    />
-                  </div>
-                </div>
-
-                <div>
                   <label className="block text-[10px] sm:text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Content</label>
                   <textarea
                     rows="5"
