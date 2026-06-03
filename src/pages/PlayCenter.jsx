@@ -84,35 +84,33 @@ const PlayCenter = () => {
 
   const fetchPlayableGames = async () => {
     try {
-      const { data, error } = await supabase
-        .from('games')
-        .select('*');
-      
-      if (!error && data && data.length > 0) {
-        // 좋아요 수 동적 매핑
-        const dbLikes = {};
-        data.forEach(item => {
-          dbLikes[item.id] = item.like_count || 0;
-        });
-        setLikes(dbLikes);
+      const [gamesRes, introsRes] = await Promise.all([
+        supabase.from('games').select('*'),
+        supabase.from('game_intros').select('id, thumbnail_url')
+      ]);
 
-        const merged = PLAYABLE_GAMES.map(pg => {
-          const dbItem = data.find(d => d.id === pg.id);
-          if (dbItem) {
-            return {
-              ...pg,
-              title: dbItem.title || pg.title,
-              description: dbItem.description || pg.description,
-              tag: dbItem.tag || pg.tag,
-              thumbnail_url: dbItem.thumbnail_url || pg.thumbnail_url,
-              color: dbItem.color || pg.color,
-              border_color: dbItem.border_color || pg.border_color
-            };
-          }
-          return pg;
-        });
-        setGamesList(merged);
-      }
+      const gamesData = (!gamesRes.error && gamesRes.data) ? gamesRes.data : [];
+      const introsData = (!introsRes.error && introsRes.data) ? introsRes.data : [];
+
+      const dbLikes = {};
+      gamesData.forEach(item => { dbLikes[item.id] = item.like_count || 0; });
+      setLikes(dbLikes);
+
+      const merged = PLAYABLE_GAMES.map(pg => {
+        const dbItem = gamesData.find(d => d.id === pg.id);
+        const introItem = introsData.find(d => d.id === pg.id);
+        return {
+          ...pg,
+          title: dbItem?.title || pg.title,
+          description: dbItem?.description || pg.description,
+          tag: dbItem?.tag || pg.tag,
+          // game_intros 썸네일 우선, 없으면 games, 없으면 하드코딩
+          thumbnail_url: introItem?.thumbnail_url || dbItem?.thumbnail_url || pg.thumbnail_url,
+          color: dbItem?.color || pg.color,
+          border_color: dbItem?.border_color || pg.border_color
+        };
+      });
+      setGamesList(merged);
     } catch (err) {
       console.warn("DB 실시간 체험 게임 로드 지연으로 기본 사양을 노출합니다.", err.message);
     }
