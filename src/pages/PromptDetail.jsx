@@ -544,9 +544,6 @@ const PromptDetail = () => {
             </button>
           </div>
           
-          <span className="text-[10px] px-3 py-1 bg-gray-100 text-gray-400 rounded-full font-black uppercase">
-            Prompt Card View
-          </span>
         </div>
       </motion.main>
 
