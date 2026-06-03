@@ -18,7 +18,7 @@ const ToolbarBtn = ({ onClick, active, title, children }) => (
 
 const Divider = () => <div className="w-px h-5 bg-gray-200 mx-0.5" />;
 
-const RichEditor = ({ value, onChange, placeholder = '내용을 입력하세요.' }) => {
+const RichEditor = ({ value, onChange, placeholder = '내용을 입력하세요.', minHeight = '120px' }) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
@@ -31,7 +31,8 @@ const RichEditor = ({ value, onChange, placeholder = '내용을 입력하세요.
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none outline-none min-h-[120px] px-4 py-3 text-gray-700 text-sm leading-relaxed',
+        class: 'prose prose-sm max-w-none outline-none px-4 py-3 text-gray-700 text-sm leading-relaxed',
+        style: `min-height: ${minHeight}`,
       },
     },
   });

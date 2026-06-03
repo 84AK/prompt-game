@@ -495,11 +495,11 @@ const Home = () => {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden"
+              className="w-full max-w-lg md:max-w-5xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:h-[88vh]"
               onClick={e => e.stopPropagation()}
             >
               {/* 모달 헤더 */}
-              <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
                 <div className="flex items-center gap-2">
                   <Gamepad2 className="text-brand-primary w-5 h-5" />
                   <span className="font-black text-gray-900">게임 등록하기</span>
@@ -509,107 +509,99 @@ const Home = () => {
                 </button>
               </div>
 
-              {/* 폼 */}
-              <form onSubmit={handleRegisterSubmit} className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
-                {/* 제목 */}
-                <div>
-                  <label className="block text-xs font-black text-gray-700 mb-1.5">게임 제목 <span className="text-red-400">*</span></label>
-                  <input
-                    type="text"
-                    placeholder="예: 마법사의 주문 배틀"
-                    value={registerForm.title}
-                    onChange={e => setRegisterForm(p => ({ ...p, title: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
-                    required
-                  />
-                </div>
+              {/* 폼 — 모바일: 1컬럼 스크롤 / 데스크탑: 2컬럼 고정 */}
+              <form onSubmit={handleRegisterSubmit} className="flex flex-col md:flex-row flex-1 min-h-0">
 
-                {/* 설명 */}
-                <div>
-                  <label className="block text-xs font-black text-gray-700 mb-1.5">게임 설명 <span className="text-red-400">*</span></label>
-                  <RichEditor
-                    value={registerForm.content}
-                    onChange={val => setRegisterForm(p => ({ ...p, content: val }))}
-                    placeholder="게임 방법, 규칙, 재미 포인트를 자유롭게 적어보세요."
-                  />
-                </div>
+                {/* ── 왼쪽 패널: 제목 / 이미지 / 링크 ── */}
+                <div className="md:w-80 lg:w-96 shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-gray-100">
+                  <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
 
-                {/* 이미지 */}
-                <div>
-                  <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
-                    <ImagePlus size={13} /> 이미지 <span className="text-gray-400 font-normal">(선택)</span>
-                  </label>
-                  <input type="file" accept="image/*" ref={fileInputRef} onChange={handleRegisterImageUpload} className="hidden" />
-
-                  {registerForm.image_url ? (
-                    <div className="relative w-full h-32 rounded-xl overflow-hidden border border-gray-200">
-                      <img src={registerForm.image_url} alt="preview" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => setRegisterForm(p => ({ ...p, image_url: '' }))}
-                        className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full cursor-pointer">
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingImage}
-                        className="w-full py-3 border-2 border-dashed border-gray-200 hover:border-brand-primary rounded-xl text-xs font-bold text-gray-400 hover:text-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
-                        {uploadingImage ? '업로드 중...' : '파일 업로드'}
-                      </button>
-                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                        <div className="flex-1 h-px bg-gray-200" /><span>또는 URL 직접 입력</span><div className="flex-1 h-px bg-gray-200" />
-                      </div>
+                    {/* 제목 */}
+                    <div>
+                      <label className="block text-xs font-black text-gray-700 mb-1.5">게임 제목 <span className="text-red-400">*</span></label>
                       <input
-                        type="url"
-                        placeholder="https://... (이미지 주소)"
-                        value={registerForm.image_url}
-                        onChange={e => setRegisterForm(p => ({ ...p, image_url: e.target.value }))}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
+                        type="text"
+                        placeholder="예: 마법사의 주문 배틀"
+                        value={registerForm.title}
+                        onChange={e => setRegisterForm(p => ({ ...p, title: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
+                        required
                       />
                     </div>
-                  )}
+
+                    {/* 이미지 */}
+                    <div>
+                      <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <ImagePlus size={13} /> 이미지 <span className="text-gray-400 font-normal">(선택)</span>
+                      </label>
+                      <input type="file" accept="image/*" ref={fileInputRef} onChange={handleRegisterImageUpload} className="hidden" />
+                      {registerForm.image_url ? (
+                        <div className="relative w-full h-36 rounded-xl overflow-hidden border border-gray-200">
+                          <img src={registerForm.image_url} alt="preview" className="w-full h-full object-cover" />
+                          <button type="button" onClick={() => setRegisterForm(p => ({ ...p, image_url: '' }))}
+                            className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full cursor-pointer">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}
+                            className="w-full py-3 border-2 border-dashed border-gray-200 hover:border-brand-primary rounded-xl text-xs font-bold text-gray-400 hover:text-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2">
+                            {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                            {uploadingImage ? '업로드 중...' : '파일 업로드'}
+                          </button>
+                          <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                            <div className="flex-1 h-px bg-gray-200" /><span>또는 URL 직접 입력</span><div className="flex-1 h-px bg-gray-200" />
+                          </div>
+                          <input type="url" placeholder="https://... (이미지 주소)" value={registerForm.image_url}
+                            onChange={e => setRegisterForm(p => ({ ...p, image_url: e.target.value }))}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-primary focus:bg-white transition-all" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 링크 URL */}
+                    <div>
+                      <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <Link2 size={13} /> 링크 URL <span className="text-gray-400 font-normal">(선택)</span>
+                      </label>
+                      <input type="url" placeholder="https://..." value={registerForm.link_url}
+                        onChange={e => setRegisterForm(p => ({ ...p, link_url: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all" />
+                    </div>
+
+                    {/* 유튜브 URL */}
+                    <div>
+                      <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <Video size={13} className="text-red-500" /> 유튜브 URL <span className="text-gray-400 font-normal">(선택)</span>
+                      </label>
+                      <input type="url" placeholder="https://youtube.com/watch?v=..." value={registerForm.youtube_url}
+                        onChange={e => setRegisterForm(p => ({ ...p, youtube_url: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all" />
+                    </div>
+                  </div>
+
+                  {/* 등록 버튼 */}
+                  <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+                    <button type="submit" disabled={submittingRegister || uploadingImage}
+                      className="w-full py-3.5 bg-gray-900 hover:bg-brand-primary text-white rounded-xl font-black text-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      {submittingRegister ? <><Loader2 size={15} className="animate-spin" /> 등록 중...</> : '🎮 갤러리에 등록하기'}
+                    </button>
+                  </div>
                 </div>
 
-                {/* 링크 URL */}
-                <div>
-                  <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
-                    <Link2 size={13} /> 링크 URL <span className="text-gray-400 font-normal">(선택)</span>
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    value={registerForm.link_url}
-                    onChange={e => setRegisterForm(p => ({ ...p, link_url: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
-                  />
+                {/* ── 오른쪽 패널: 게임 설명 에디터 ── */}
+                <div className="flex-1 flex flex-col min-h-0 px-6 py-5 md:px-6">
+                  <label className="block text-xs font-black text-gray-700 mb-2">게임 설명 <span className="text-red-400">*</span></label>
+                  <div className="flex-1 flex flex-col min-h-0 [&_.ProseMirror]:flex-1 [&_.ProseMirror]:overflow-y-auto">
+                    <RichEditor
+                      value={registerForm.content}
+                      onChange={val => setRegisterForm(p => ({ ...p, content: val }))}
+                      placeholder="게임 방법, 규칙, 재미 포인트를 자유롭게 적어보세요."
+                      minHeight="300px"
+                    />
+                  </div>
                 </div>
-
-                {/* 유튜브 URL */}
-                <div>
-                  <label className="block text-xs font-black text-gray-700 mb-1.5 flex items-center gap-1.5">
-                    <Video size={13} className="text-red-500" /> 유튜브 영상 URL <span className="text-gray-400 font-normal">(선택)</span>
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://youtube.com/watch?v=..."
-                    value={registerForm.youtube_url}
-                    onChange={e => setRegisterForm(p => ({ ...p, youtube_url: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
-                  />
-                </div>
-
-                {/* 제출 버튼 */}
-                <button
-                  type="submit"
-                  disabled={submittingRegister || uploadingImage}
-                  className="w-full py-3.5 bg-gray-900 hover:bg-brand-primary text-white rounded-xl font-black text-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {submittingRegister ? <><Loader2 size={15} className="animate-spin" /> 등록 중...</> : '🎮 갤러리에 등록하기'}
-                </button>
               </form>
             </motion.div>
           </motion.div>
