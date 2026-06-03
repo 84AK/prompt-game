@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Calendar, User as UserIcon, Heart, Share2,
   Sparkles, Edit2, Trash2, Loader2, X, Send, ChevronLeft, Shield, Gamepad2,
-  ExternalLink, PlayCircle, Image as ImageIcon
+  ExternalLink, PlayCircle, Image as ImageIcon, ImagePlus
 } from 'lucide-react';
 
 const extractPlayCircleId = (url) => {
@@ -30,8 +30,10 @@ const PromptDetail = () => {
   const [loading, setLoading] = useState(true);
   const [isWriteOpen, setIsWriteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ title: '', content: '', r: '', c: '', t: '', f: '' });
+  const [formData, setFormData] = useState({ title: '', content: '', r: '', c: '', t: '', f: '', image_url: '', link_url: '', youtube_url: '' });
   const [toast, setToast] = useState({ isVisible: false, message: '' });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const editFileInputRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -182,11 +184,33 @@ const PromptDetail = () => {
       c: post.prompt_data?.c || '',
       t: post.prompt_data?.t || '',
       f: post.prompt_data?.f || '',
-      image_url: post.prompt_data?.image_url || '',
+      image_url: post.media_url || post.prompt_data?.image_url || '',
       link_url: post.prompt_data?.link_url || '',
       youtube_url: post.prompt_data?.youtube_url || ''
     });
     setIsWriteOpen(true);
+  };
+
+  const handleEditImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('이미지는 최대 5MB까지 가능합니다.'); return; }
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const fileName = `posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage
+        .from('game-assets')
+        .upload(fileName, file, { cacheControl: '3600', contentType: file.type });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('game-assets').getPublicUrl(fileName);
+      setFormData(prev => ({ ...prev, image_url: publicUrl }));
+      showToast('이미지 업로드 완료! ✅');
+    } catch (err) {
+      showToast('이미지 업로드 실패: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   // 수정 완료 전송
@@ -214,7 +238,8 @@ const PromptDetail = () => {
         .update({
           title: formData.title.trim(),
           content: formData.content.trim(),
-          prompt_data: promptObj
+          prompt_data: promptObj,
+          media_url: formData.image_url?.trim() || null,
         })
         .eq('id', post.id);
 
@@ -505,6 +530,37 @@ const PromptDetail = () => {
 
                 <div className="space-y-3 p-5 bg-gray-50/80 rounded-2xl border border-gray-100">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">미디어 첨부 (선택)</p>
+
+                  {/* 이미지 */}
+                  <div>
+                    <label className="text-xs font-black text-gray-500 mb-1.5 block flex items-center gap-1.5"><ImagePlus size={12} /> 이미지</label>
+                    <input type="file" accept="image/*" ref={editFileInputRef} onChange={handleEditImageUpload} className="hidden" />
+                    {formData.image_url ? (
+                      <div className="relative w-full h-32 rounded-xl overflow-hidden border border-gray-200">
+                        <img src={formData.image_url} alt="preview" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => setFormData(p => ({ ...p, image_url: '' }))}
+                          className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full cursor-pointer">
+                          <X size={12} />
+                        </button>
+                        <button type="button" onClick={() => editFileInputRef.current?.click()}
+                          className="absolute bottom-2 right-2 px-2 py-1 bg-black/50 text-white rounded-lg text-[10px] font-black cursor-pointer">
+                          변경
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <button type="button" onClick={() => editFileInputRef.current?.click()} disabled={uploadingImage}
+                          className="w-full py-2.5 border-2 border-dashed border-gray-200 hover:border-brand-primary rounded-xl text-xs font-bold text-gray-400 hover:text-brand-primary transition-all cursor-pointer flex items-center justify-center gap-2">
+                          {uploadingImage ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+                          {uploadingImage ? '업로드 중...' : '이미지 업로드'}
+                        </button>
+                        <input type="url" placeholder="또는 이미지 URL 직접 입력" value={formData.image_url}
+                          onChange={e => setFormData(p => ({ ...p, image_url: e.target.value }))}
+                          className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs text-gray-700 transition-all" />
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label className="text-xs font-black text-gray-500 mb-1.5 block">유튜브 URL</label>
                     <input type="url" placeholder="https://www.youtube.com/watch?v=..." className="w-full px-4 py-2.5 bg-white border border-gray-200 focus:border-red-400 rounded-xl outline-none font-bold text-xs text-gray-700 transition-all placeholder:text-gray-300" value={formData.youtube_url || ''} onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })} />
