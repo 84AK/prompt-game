@@ -97,16 +97,22 @@ const parseMarkdownText = (markdownText) => {
       return;
     }
 
-    // 이미지: ![alt](url)
-    const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    // 이미지: ![alt](url) 또는 ![alt](url =WxH)
+    const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+=(\d*)x(\d*))?\)$/);
     if (imgMatch) {
       flushList();
+      const [, alt, src, w, h] = imgMatch;
+      const style = {};
+      if (w) style.width = `${w}px`;
+      if (h) style.height = `${h}px`;
+      const hasSize = w || h;
       elements.push(
         <img
           key={`img-${index}`}
-          src={imgMatch[2]}
-          alt={imgMatch[1] || ''}
-          className="block mx-auto max-w-full max-h-96 rounded-2xl my-4 object-contain shadow-md"
+          src={src}
+          alt={alt || ''}
+          style={style}
+          className={`block mx-auto rounded-2xl my-4 object-contain shadow-md ${hasSize ? '' : 'max-w-full max-h-96'}`}
         />
       );
       return;

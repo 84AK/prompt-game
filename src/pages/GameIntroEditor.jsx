@@ -56,6 +56,8 @@ const GameIntroEditor = () => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ isVisible: false, message: '' });
+  const [showImgPanel, setShowImgPanel] = useState(false);
+  const [imgForm, setImgForm] = useState({ url: '', width: '', height: '' });
   
   const textareaRef = useRef(null);
   const navigate = useNavigate();
@@ -429,9 +431,86 @@ const GameIntroEditor = () => {
                 <button type="button" onClick={() => insertStyle('heading')} className="p-2 hover:bg-white text-gray-500 hover:text-gray-800 rounded-lg transition-all cursor-pointer" title="Heading"><Heading size={13} /></button>
                 <button type="button" onClick={() => insertStyle('quote')} className="p-2 hover:bg-white text-gray-500 hover:text-gray-800 rounded-lg transition-all cursor-pointer" title="Blockquote"><Quote size={13} /></button>
                 <button type="button" onClick={() => insertStyle('link')} className="p-2 hover:bg-white text-gray-500 hover:text-gray-800 rounded-lg transition-all cursor-pointer" title="Insert Link"><LinkIcon size={13} /></button>
-                <button type="button" onClick={() => insertStyle('image')} className="p-2 hover:bg-white text-gray-500 hover:text-gray-800 rounded-lg transition-all cursor-pointer" title="Insert Image"><ImageIcon size={13} /></button>
+                <button
+                  type="button"
+                  onClick={() => setShowImgPanel(p => !p)}
+                  className={`p-2 rounded-lg transition-all cursor-pointer ${showImgPanel ? 'bg-orange-500 text-white' : 'hover:bg-white text-gray-500 hover:text-gray-800'}`}
+                  title="이미지 삽입 (크기 지정)"
+                >
+                  <ImageIcon size={13} />
+                </button>
               </div>
             </div>
+
+            {/* 이미지 삽입 패널 */}
+            {showImgPanel && (
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-3">
+                <p className="text-[10px] font-black text-orange-700 uppercase tracking-widest">이미지 삽입 — 크기 지정</p>
+                <input
+                  type="url"
+                  placeholder="이미지 URL (필수)"
+                  value={imgForm.url}
+                  onChange={e => setImgForm(p => ({ ...p, url: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-white border border-orange-200 rounded-xl outline-none text-xs font-bold text-gray-700 focus:border-orange-500 transition-all"
+                />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="text-[10px] font-black text-gray-500 block mb-1">너비 (px) — 비워두면 자동</label>
+                    <input
+                      type="number"
+                      placeholder="예: 600"
+                      value={imgForm.width}
+                      onChange={e => setImgForm(p => ({ ...p, width: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-white border border-orange-200 rounded-xl outline-none text-xs font-bold text-gray-700 focus:border-orange-500 transition-all"
+                      min="50" max="2000"
+                    />
+                  </div>
+                  <span className="text-gray-400 font-black mt-5">×</span>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-black text-gray-500 block mb-1">높이 (px) — 비워두면 자동</label>
+                    <input
+                      type="number"
+                      placeholder="예: 400"
+                      value={imgForm.height}
+                      onChange={e => setImgForm(p => ({ ...p, height: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-white border border-orange-200 rounded-xl outline-none text-xs font-bold text-gray-700 focus:border-orange-500 transition-all"
+                      min="50" max="2000"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!imgForm.url.trim()) return;
+                      const sizePart = (imgForm.width || imgForm.height)
+                        ? ` =${imgForm.width || ''}x${imgForm.height || ''}`
+                        : '';
+                      const markdown = `\n![](${imgForm.url.trim()}${sizePart})\n`;
+                      const textarea = textareaRef.current;
+                      if (textarea) {
+                        const pos = textarea.selectionStart;
+                        const newText = detailedIntro.substring(0, pos) + markdown + detailedIntro.substring(pos);
+                        setDetailedIntro(newText);
+                        setTimeout(() => { textarea.focus(); textarea.setSelectionRange(pos + markdown.length, pos + markdown.length); }, 0);
+                      }
+                      setImgForm({ url: '', width: '', height: '' });
+                      setShowImgPanel(false);
+                    }}
+                    className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black cursor-pointer transition-all"
+                  >
+                    ✅ 이미지 삽입
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowImgPanel(false)}
+                    className="px-4 py-2.5 bg-white border border-orange-200 text-orange-500 rounded-xl text-xs font-black cursor-pointer transition-all"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            )}
 
             <textarea 
               ref={textareaRef}
