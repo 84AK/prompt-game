@@ -97,6 +97,21 @@ const parseMarkdownText = (markdownText) => {
       return;
     }
 
+    // 이미지: ![alt](url)
+    const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (imgMatch) {
+      flushList();
+      elements.push(
+        <img
+          key={`img-${index}`}
+          src={imgMatch[2]}
+          alt={imgMatch[1] || ''}
+          className="w-full rounded-2xl my-4 object-cover shadow-md"
+        />
+      );
+      return;
+    }
+
     const isBullet = trimmed.startsWith('*') || trimmed.startsWith('-');
     const isNumbered = /^\d+\./.test(trimmed);
 
