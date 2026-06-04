@@ -19,10 +19,11 @@ const POST_COLORS = [
   { from: '#818cf8', to: '#6366f1' },
 ];
 
-const PostCard = ({ post, likes, onLike, onShare, colorIdx }) => {
+const PostCard = ({ post, likes, likedPosts = {}, onLike, onShare, colorIdx }) => {
   const navigate = useNavigate();
   const grad = POST_COLORS[colorIdx % POST_COLORS.length];
   const postLikes = likes[post.id] ?? post.likes_count ?? 0;
+  const isLiked = likedPosts[post.id];
 
   const thumbUrl = post.media_url || post.image_url || post.prompt_data?.image_url;
   const cleanTitle = post.title?.replace(/^[\u{1F300}-\u{1FAFF}️\s]*\[.*?\]\s*/u, '').trim() || post.title || '제목 없음';
@@ -79,7 +80,7 @@ const PostCard = ({ post, likes, onLike, onShare, colorIdx }) => {
               onClick={(e) => { e.stopPropagation(); onLike(post.id); }}
               className="p-1.5 hover:bg-red-50 rounded-xl transition-all text-gray-400 flex items-center gap-0.5 cursor-pointer"
             >
-              <Heart size={12} className={postLikes > 0 ? 'fill-red-500 text-red-500' : ''} />
+              <Heart size={12} className={isLiked ? 'fill-red-500 text-red-500' : ''} />
               <span className="text-[9px] font-black">{postLikes}</span>
             </button>
             <button
@@ -99,6 +100,7 @@ const Home = () => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [likes, setLikes] = useState({});
+  const [likedPosts, setLikedPosts] = useState({});
   const [toast, setToast] = useState({ isVisible: false, message: '' });
   const [postsList, setPostsList] = useState([]);
   const [loadingGames, setLoadingGames] = useState(false);
@@ -118,6 +120,7 @@ const Home = () => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchMyLikes(session.user.id);
       }
     });
 
@@ -125,8 +128,10 @@ const Home = () => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchMyLikes(session.user.id);
       } else {
         setProfile(null);
+        setLikedPosts({});
       }
     });
 
@@ -155,6 +160,28 @@ const Home = () => {
       setPostsList([]);
     } finally {
       setLoadingGames(false);
+    }
+  };
+
+  const fetchMyLikes = async (userId) => {
+    if (!userId) {
+      setLikedPosts({});
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('post_likes')
+        .select('post_id')
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      const userLikes = {};
+      data?.forEach(item => {
+        userLikes[item.post_id] = true;
+      });
+      setLikedPosts(userLikes);
+    } catch (err) {
+      console.warn("post_likes 조회 실패:", err.message);
     }
   };
 
@@ -201,13 +228,53 @@ const Home = () => {
   };
 
   const handleLike = async (postId) => {
-    const nextCount = (likes[postId] || 0) + 1;
-    setLikes(prev => ({ ...prev, [postId]: nextCount }));
-    showToast('게임이 마음에 드셨군요! 💖');
-    try {
-      await supabase.from('posts').update({ likes_count: nextCount }).eq('id', postId);
-    } catch (err) {
-      console.warn("좋아요 업데이트 실패:", err.message);
+    if (!user) {
+      showToast('좋아요를 누르려면 먼저 로그인해 주세요! 💖');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+
+    const isLiked = likedPosts[postId];
+    const currentCount = likes[postId] || 0;
+
+    if (isLiked) {
+      // 좋아요 취소
+      const nextCount = Math.max(0, currentCount - 1);
+      setLikes(prev => ({ ...prev, [postId]: nextCount }));
+      setLikedPosts(prev => ({ ...prev, [postId]: false }));
+      showToast('좋아요를 취소했습니다. 💔');
+
+      try {
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.warn("좋아요 취소 DB 반영 실패:", err.message);
+        setLikes(prev => ({ ...prev, [postId]: currentCount }));
+        setLikedPosts(prev => ({ ...prev, [postId]: true }));
+      }
+    } else {
+      // 좋아요 추가
+      const nextCount = currentCount + 1;
+      setLikes(prev => ({ ...prev, [postId]: nextCount }));
+      setLikedPosts(prev => ({ ...prev, [postId]: true }));
+      showToast('게임이 마음에 드셨군요! 💖');
+
+      try {
+        const { error } = await supabase
+          .from('post_likes')
+          .insert([{ post_id: postId, user_id: user.id }]);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.warn("좋아요 DB 반영 실패:", err.message);
+        setLikes(prev => ({ ...prev, [postId]: currentCount }));
+        setLikedPosts(prev => ({ ...prev, [postId]: false }));
+      }
     }
   };
 
@@ -476,6 +543,7 @@ const Home = () => {
                 key={post.id}
                 post={post}
                 likes={likes}
+                likedPosts={likedPosts}
                 onLike={handleLike}
                 onShare={handleShare}
                 colorIdx={idx}

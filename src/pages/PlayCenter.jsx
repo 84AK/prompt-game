@@ -54,6 +54,7 @@ const PlayCenter = () => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [likes, setLikes] = useState({});
+  const [likedGames, setLikedGames] = useState({});
   const [gamesList, setGamesList] = useState(PLAYABLE_GAMES);
   const [toast, setToast] = useState({ isVisible: false, message: '' });
   const navigate = useNavigate();
@@ -64,6 +65,7 @@ const PlayCenter = () => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchMyLikedGames(session.user.id);
       }
     });
 
@@ -71,8 +73,10 @@ const PlayCenter = () => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchMyLikedGames(session.user.id);
       } else {
         setProfile(null);
+        setLikedGames({});
       }
     });
 
@@ -113,6 +117,28 @@ const PlayCenter = () => {
       setGamesList(merged);
     } catch (err) {
       console.warn("DB 실시간 체험 게임 로드 지연으로 기본 사양을 노출합니다.", err.message);
+    }
+  };
+
+  const fetchMyLikedGames = async (userId) => {
+    if (!userId) {
+      setLikedGames({});
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('game_likes')
+        .select('game_id')
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      const userLiked = {};
+      data?.forEach(item => {
+        userLiked[item.game_id] = true;
+      });
+      setLikedGames(userLiked);
+    } catch (err) {
+      console.warn("game_likes 조회 실패:", err.message);
     }
   };
 
@@ -157,25 +183,53 @@ const PlayCenter = () => {
   };
 
   const handleLike = async (gameId) => {
-    try {
-      const currentCount = likes[gameId] || 0;
+    if (!user) {
+      showToast('좋아요를 누르려면 먼저 로그인해 주세요! 💖');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+
+    const isLiked = likedGames[gameId];
+    const currentCount = likes[gameId] || 0;
+
+    if (isLiked) {
+      // 좋아요 취소
+      const nextCount = Math.max(0, currentCount - 1);
+      setLikes(prev => ({ ...prev, [gameId]: nextCount }));
+      setLikedGames(prev => ({ ...prev, [gameId]: false }));
+      showToast('좋아요를 취소했습니다. 💔');
+
+      try {
+        const { error } = await supabase
+          .from('game_likes')
+          .delete()
+          .eq('game_id', gameId)
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error("좋아요 취소 DB 반영 실패:", err.message);
+        setLikes(prev => ({ ...prev, [gameId]: currentCount }));
+        setLikedGames(prev => ({ ...prev, [gameId]: true }));
+      }
+    } else {
+      // 좋아요 추가
       const nextCount = currentCount + 1;
-      
-      const { error } = await supabase
-        .from('games')
-        .update({ like_count: nextCount })
-        .eq('id', gameId);
-      
-      if (error) throw error;
-      
-      const updated = { ...likes, [gameId]: nextCount };
-      setLikes(updated);
+      setLikes(prev => ({ ...prev, [gameId]: nextCount }));
+      setLikedGames(prev => ({ ...prev, [gameId]: true }));
       showToast('게임이 마음에 드셨군요! 💖');
-    } catch (err) {
-      console.error("좋아요 업데이트 실패:", err.message);
-      const updated = { ...likes, [gameId]: (likes[gameId] || 0) + 1 };
-      setLikes(updated);
-      showToast('임시로 좋아요를 반영했습니다! 💖');
+
+      try {
+        const { error } = await supabase
+          .from('game_likes')
+          .insert([{ game_id: gameId, user_id: user.id }]);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error("좋아요 DB 반영 실패:", err.message);
+        setLikes(prev => ({ ...prev, [gameId]: currentCount }));
+        setLikedGames(prev => ({ ...prev, [gameId]: false }));
+      }
     }
   };
 
@@ -374,7 +428,7 @@ const PlayCenter = () => {
                       className="p-2 hover:bg-red-50 hover:text-red-500 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                       title="좋아요"
                     >
-                      <Heart size={16} className={gameLikes > 0 ? 'fill-red-500 text-red-500' : ''} />
+                      <Heart size={16} className={likedGames[game.id] ? 'fill-red-500 text-red-500' : ''} />
                       <span className="text-xs font-black">{gameLikes}</span>
                     </button>
 

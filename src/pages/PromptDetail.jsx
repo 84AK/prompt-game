@@ -39,17 +39,26 @@ const PromptDetail = () => {
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+        fetchLikeStatus(session.user.id, postId);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setProfile(null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+        fetchLikeStatus(session.user.id, postId);
+      } else {
+        setProfile(null);
+        setIsLiked(false);
+      }
     });
 
     fetchPostDetail();
@@ -61,6 +70,26 @@ const PromptDetail = () => {
   const showToast = (message) => {
     setToast({ isVisible: true, message });
     setTimeout(() => setToast({ isVisible: false, message: '' }), 3000);
+  };
+
+  const fetchLikeStatus = async (userId, targetPostId) => {
+    if (!userId || !targetPostId) {
+      setIsLiked(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('post_likes')
+        .select('id')
+        .eq('post_id', targetPostId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      setIsLiked(!!data);
+    } catch (err) {
+      console.warn("좋아요 상태 조회 실패:", err.message);
+    }
   };
 
   const fetchProfile = async (userId) => {
@@ -123,31 +152,55 @@ const PromptDetail = () => {
     }
   };
 
-  // 상세 페이지 내 좋아요 증식
+  // 상세 페이지 내 좋아요 증식 방지 처리
   const handleLikePost = async () => {
     if (!post) return;
-    try {
-      const newLikes = (post.likes_count || 0) + 1;
-      const { error } = await supabase
-        .from('posts')
-        .update({ likes_count: newLikes })
-        .eq('id', post.id);
+    if (!user) {
+      showToast('좋아요를 누르려면 먼저 로그인해 주세요! 💖');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
 
-      if (error) throw error;
-      setPost(prev => ({ ...prev, likes_count: newLikes }));
-      showToast('이 프롬프트 마법을 응원합니다! 💖');
-    } catch (err) {
-      // 로컬 Mockup 좋아요
-      const updatedPost = { ...post, likes_count: (post.likes_count || 0) + 1 };
-      setPost(updatedPost);
-      
-      const localData = localStorage.getItem('mockup_posts');
-      if (localData) {
-        const postsArray = JSON.parse(localData);
-        const mapped = postsArray.map(p => p.id === post.id ? updatedPost : p);
-        localStorage.setItem('mockup_posts', JSON.stringify(mapped));
+    const currentLikes = post.likes_count || 0;
+
+    if (isLiked) {
+      // 좋아요 취소
+      const nextCount = Math.max(0, currentLikes - 1);
+      setPost(prev => ({ ...prev, likes_count: nextCount }));
+      setIsLiked(false);
+      showToast('좋아요를 취소했습니다. 💔');
+
+      try {
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', post.id)
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.warn("좋아요 취소 DB 반영 실패:", err.message);
+        setPost(prev => ({ ...prev, likes_count: currentLikes }));
+        setIsLiked(true);
       }
-      showToast('로컬 임시 좋아요! 💖');
+    } else {
+      // 좋아요 추가
+      const nextCount = currentLikes + 1;
+      setPost(prev => ({ ...prev, likes_count: nextCount }));
+      setIsLiked(true);
+      showToast('이 프롬프트 마법을 응원합니다! 💖');
+
+      try {
+        const { error } = await supabase
+          .from('post_likes')
+          .insert([{ post_id: post.id, user_id: user.id }]);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.warn("좋아요 DB 반영 실패:", err.message);
+        setPost(prev => ({ ...prev, likes_count: currentLikes }));
+        setIsLiked(false);
+      }
     }
   };
 
@@ -532,7 +585,7 @@ const PromptDetail = () => {
               onClick={handleLikePost}
               className="px-4 py-2 bg-red-50 border border-red-100/50 hover:bg-red-100 text-red-500 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer"
             >
-              <Heart size={14} className={(post.likes_count || 0) > 0 ? 'fill-red-500' : ''} />
+              <Heart size={14} className={isLiked ? 'fill-red-500 text-red-500' : ''} />
               <span>추천 {(post.likes_count || 0)}</span>
             </button>
             <button 

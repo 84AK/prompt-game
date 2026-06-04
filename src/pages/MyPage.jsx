@@ -71,22 +71,33 @@ const MyPage = () => {
 
         setMyPosts(posts || []);
 
-        // 3. 좋아요한 게임 로드 (localStorage 기반)
-        const savedLikes = localStorage.getItem('prompt_game_likes');
-        if (savedLikes) {
-          const parsed = JSON.parse(savedLikes);
-          const likedList = [];
-          Object.keys(parsed).forEach(gameId => {
-            if (parsed[gameId] > 0) {
-              const detail = gameDetailMap[gameId] || { title: gameId, tag: '마법훈련', color: 'bg-gray-50/50', border: 'border-gray-100/50' };
-              likedList.push({
-                id: gameId,
-                ...detail,
-                likeCount: parsed[gameId]
-              });
-            }
+        // 3. 좋아요한 게임 로드 (game_likes 테이블 기반)
+        const { data: userLikes } = await supabase
+          .from('game_likes')
+          .select('game_id')
+          .eq('user_id', session.user.id);
+
+        if (userLikes && userLikes.length > 0) {
+          const gameIds = userLikes.map(ul => ul.game_id);
+          const { data: dbGames } = await supabase
+            .from('games')
+            .select('id, title, like_count')
+            .in('id', gameIds);
+
+          const likedList = userLikes.map(ul => {
+            const gameId = ul.game_id;
+            const dbGame = dbGames?.find(g => g.id === gameId);
+            const detail = gameDetailMap[gameId] || { title: gameId, tag: '마법훈련', color: 'bg-gray-50/50', border: 'border-gray-100/50' };
+            return {
+              id: gameId,
+              ...detail,
+              title: dbGame?.title || detail.title,
+              likeCount: dbGame?.like_count || 0
+            };
           });
           setLikedGames(likedList);
+        } else {
+          setLikedGames([]);
         }
 
       } catch (err) {
