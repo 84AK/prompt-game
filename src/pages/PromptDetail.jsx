@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Calendar, User as UserIcon, Heart, Share2,
   Sparkles, Edit2, Trash2, Loader2, X, Send, ChevronLeft, Shield, Gamepad2,
-  ExternalLink, PlayCircle, Image as ImageIcon, ImagePlus, MessageSquare
+  ExternalLink, PlayCircle, Image as ImageIcon, ImagePlus, MessageSquare,
+  CornerDownRight
 } from 'lucide-react';
 
 const extractPlayCircleId = (url) => {
@@ -40,6 +41,8 @@ const PromptDetail = () => {
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [replyingToId, setReplyingToId] = useState(null);
+  const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -246,6 +249,31 @@ const PromptDetail = () => {
       showToast('댓글이 등록됐습니다! 💬');
     } catch (err) {
       showToast('댓글 등록 실패: ' + err.message);
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleAddReply = async (e, parentId) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    setSubmittingComment(true);
+    const authorName = profile?.display_name || user?.email?.split('@')[0] || '익명';
+    try {
+      const { error } = await supabase.from('comments').insert([{
+        post_id: postId,
+        user_id: user.id,
+        author_name: authorName,
+        content: replyText.trim(),
+        parent_id: parentId
+      }]);
+      if (error) throw error;
+      setReplyText('');
+      setReplyingToId(null);
+      fetchComments();
+      showToast('답글이 등록됐습니다! 💬');
+    } catch (err) {
+      showToast('답글 등록 실패: ' + err.message);
     } finally {
       setSubmittingComment(false);
     }
@@ -615,37 +643,129 @@ const PromptDetail = () => {
         ) : comments.length === 0 ? (
           <p className="text-xs text-gray-400 font-bold py-4 text-center">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
         ) : (
-          <div className="space-y-3 mb-6">
-            {comments.map(comment => {
+          <div className="flex flex-col gap-3 mb-6">
+            {comments.filter(c => !c.parent_id).map((comment) => {
               const isOwn = user?.id === comment.user_id;
               const isAdmin = profile?.role === 'ADMIN' || sessionStorage.getItem('rctf_admin_auth') === 'true';
               const dateStr = new Date(comment.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+              const replies = comments.filter(r => r.parent_id === comment.id);
+
               return (
-                <motion.div
-                  key={comment.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-3 p-4 bg-gray-50 rounded-2xl"
-                >
-                  <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary text-xs font-black shrink-0">
-                    {comment.author_name?.[0]?.toUpperCase() || '?'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-black text-gray-800">{comment.author_name}</span>
-                      <span className="text-[10px] text-gray-400">{dateStr}</span>
+                <div key={comment.id} className="flex flex-col gap-2">
+                  {/* 최상위 댓글 */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-3 p-4 bg-gray-50 rounded-2xl"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary text-xs font-black shrink-0">
+                      {comment.author_name?.[0]?.toUpperCase() || '?'}
                     </div>
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-                  </div>
-                  {(isOwn || isAdmin) && (
-                    <button
-                      onClick={() => handleDeleteComment(comment.id, comment.user_id)}
-                      className="p-1.5 hover:bg-red-50 rounded-xl text-gray-300 hover:text-red-400 transition-all cursor-pointer shrink-0 self-start"
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-black text-gray-800">{comment.author_name}</span>
+                        <span className="text-[10px] text-gray-400">{dateStr}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+
+                      {/* 답글 쓰기 토글 버튼 */}
+                      {user && (
+                        <div className="mt-2 flex gap-3">
+                          <button
+                            onClick={() => {
+                              if (replyingToId === comment.id) {
+                                setReplyingToId(null);
+                                setReplyText('');
+                              } else {
+                                setReplyingToId(comment.id);
+                                setReplyText('');
+                              }
+                            }}
+                            className="text-[10px] font-black text-brand-primary hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <CornerDownRight size={10} /> 답글 달기
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {(isOwn || isAdmin) && (
+                      <button
+                        onClick={() => handleDeleteComment(comment.id, comment.user_id)}
+                        className="p-1.5 hover:bg-red-50 rounded-xl text-gray-300 hover:text-red-400 transition-all cursor-pointer shrink-0 self-start"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </motion.div>
+
+                  {/* 인라인 답글 입력 폼 */}
+                  {replyingToId === comment.id && (
+                    <motion.form
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      onSubmit={(e) => handleAddReply(e, comment.id)}
+                      className="ml-10 flex gap-3 p-3 bg-gray-50/50 border border-gray-150 rounded-2xl"
                     >
-                      <Trash2 size={13} />
-                    </button>
+                      <div className="w-6 h-6 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary text-[10px] font-black shrink-0 mt-1">
+                        {(profile?.display_name || user?.email)?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div className="flex-1 flex gap-2">
+                        <textarea
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          placeholder="답글을 입력하세요..."
+                          rows={1}
+                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-brand-primary transition-all resize-none"
+                          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddReply(e, comment.id); }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={submittingComment || !replyText.trim()}
+                          className="px-3 py-1 bg-brand-primary hover:brightness-110 text-white rounded-xl text-[10px] font-black transition-all cursor-pointer disabled:opacity-40"
+                        >
+                          등록
+                        </button>
+                      </div>
+                    </motion.form>
                   )}
-                </motion.div>
+
+                  {/* 대댓글(답글) 목록 */}
+                  {replies.map((reply) => {
+                    const isReplyOwn = user?.id === reply.user_id;
+                    const isReplyAdmin = profile?.role === 'ADMIN' || sessionStorage.getItem('rctf_admin_auth') === 'true';
+                    const replyDateStr = new Date(reply.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    return (
+                      <motion.div
+                        key={reply.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="ml-10 flex gap-3 p-4 bg-gray-100/60 border border-gray-150/40 rounded-2xl relative"
+                      >
+                        <div className="absolute top-4 left-[-16px] text-gray-300">
+                          <CornerDownRight size={14} />
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-brand-secondary/10 flex items-center justify-center text-brand-secondary text-xs font-black shrink-0">
+                          {reply.author_name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-black text-gray-800">{reply.author_name}</span>
+                            <span className="text-[10px] text-gray-400">{replyDateStr}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
+                        </div>
+                        {(isReplyOwn || isReplyAdmin) && (
+                          <button
+                            onClick={() => handleDeleteComment(reply.id, reply.user_id)}
+                            className="p-1.5 hover:bg-red-50 rounded-xl text-gray-300 hover:text-red-400 transition-all cursor-pointer shrink-0 self-start"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>
