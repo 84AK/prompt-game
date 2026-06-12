@@ -862,9 +862,11 @@ const RctfBattle = () => {
         {selectedTeam && (
           <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-6 sm:p-12" onClick={() => setSelectedTeam(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative max-w-5xl w-full flex flex-col gap-8" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-4">
+                <div className="bg-orange-500 text-white px-8 py-3 rounded-2xl font-black text-2xl shadow-xl">TEAM {selectedTeam.team_id} 🏁</div>
+              </div>
               <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white/10 bg-gray-900 aspect-video flex items-center justify-center">
                 {selectedTeam.media_content ? ( <img src={selectedTeam.media_content} className="w-full h-full object-contain" alt="Quiz" /> ) : ( <div className="text-gray-500 font-black text-3xl italic">이미지 미제출</div> )}
-                <div className="absolute top-8 left-8 bg-orange-500 text-white px-8 py-3 rounded-2xl font-black text-2xl shadow-xl">TEAM {selectedTeam.team_id} 🏁</div>
               </div>
               <div className="flex flex-col items-center gap-6">
                 <AnimatePresence mode="wait">
