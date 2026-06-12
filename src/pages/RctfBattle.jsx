@@ -199,18 +199,8 @@ const RctfBattle = () => {
       // 1. WebP 초고속 브라우저 리사이징 압축
       const webpBlob = await compressToWebp(file);
       
-      // 2. Supabase Storage 버킷 생성/확인
+      // 2. 파일 전송
       const bucketName = 'rctf-images';
-      try {
-        const { data: buckets } = await supabase.storage.listBuckets();
-        if (!buckets || !buckets.some(b => b.id === bucketName)) {
-          await supabase.storage.createBucket(bucketName, { public: true });
-        }
-      } catch (bucketErr) {
-        console.warn('Storage 버킷 확인/생성 우회:', bucketErr);
-      }
-
-      // 3. 파일 전송
       const fileName = `rctf_${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
       const { data, error } = await supabase.storage
         .from(bucketName)
