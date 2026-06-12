@@ -232,9 +232,15 @@ const AdminDashboard = () => {
       // 1. 오토 시딩 (Auto-Seeding) 가동
       await seedDefaultGamesData();
 
-      // 2. 사용자 목록 (최근 100명)
-      const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100);
-      setUsersList(profiles || []);
+      // 2. 사용자 목록 (이메일 포함, RPC 사용)
+      const { data: usersWithEmail, error: usersErr } = await supabase.rpc('get_users_with_email');
+      if (!usersErr && usersWithEmail) {
+        setUsersList(usersWithEmail);
+      } else {
+        // RPC 실패 시 profiles만 fallback
+        const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100);
+        setUsersList(profiles || []);
+      }
 
       // 3. 피드 목록 (최근 50개)
       const { data: posts } = await supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(50);
@@ -331,18 +337,35 @@ const AdminDashboard = () => {
     if (currentRole === newRole) return;
     setSubmitting(true);
     try {
+      // profiles 역할 업데이트
       const { error } = await supabase
         .from('profiles')
         .update({ role: newRole })
         .eq('id', targetId);
-
       if (error) throw error;
-      showToast(`권한이 ${newRole}(으)로 변경되었습니다.`);
+
+      const targetUser = usersList.find(u => u.id === targetId);
+      const email = targetUser?.email;
+      const name = targetUser?.display_name || '';
+
+      // teachers 테이블 연동
+      if (newRole === 'TEACHER' && email) {
+        // 선생님 권한 부여 → teachers에 추가
+        const { data: { session } } = await supabase.auth.getSession();
+        await supabase.from('teachers').upsert([{
+          email,
+          name,
+          created_by: session?.user?.id
+        }], { onConflict: 'email' });
+      } else if (currentRole === 'TEACHER' && newRole !== 'TEACHER' && email) {
+        // 선생님 권한 해제 → teachers에서 삭제
+        await supabase.from('teachers').delete().eq('email', email);
+      }
+
+      showToast(`✅ ${name || targetId.substring(0, 8)} 권한이 ${newRole === 'TEACHER' ? '🧑‍🏫 선생님' : newRole}(으)로 변경되었습니다.`);
       loadRealData();
     } catch (err) {
-      const updated = usersList.map(u => u.id === targetId ? { ...u, role: newRole } : u);
-      setUsersList(updated);
-      showToast(`로컬 임시 권한 변경: ${newRole}`);
+      showToast(`❌ 권한 변경 실패: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -689,8 +712,8 @@ const AdminDashboard = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-100 text-xs font-black text-gray-400 uppercase tracking-wider">
-                      <th className="py-4 px-6">ID (고유키)</th>
                       <th className="py-4 px-6">표시 이름</th>
+                      <th className="py-4 px-6">이메일</th>
                       <th className="py-4 px-6">권한 (Role)</th>
                       <th className="py-4 px-6 text-right">관리 작업</th>
                     </tr>
@@ -698,8 +721,8 @@ const AdminDashboard = () => {
                   <tbody>
                     {usersList.map((targetUser) => (
                       <tr key={targetUser.id} className="border-b border-gray-50 text-sm hover:bg-gray-50/50 transition-colors">
-                        <td className="py-4 px-6 font-mono text-xs text-gray-400">{targetUser.id.substring(0, 16)}...</td>
                         <td className="py-4 px-6 font-black text-gray-700">{targetUser.display_name}</td>
+                        <td className="py-4 px-6 font-mono text-xs text-gray-400">{targetUser.email || '-'}</td>
                         <td className="py-4 px-6">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-black ${
                             targetUser.role === 'ADMIN' ? 'bg-orange-100 text-orange-600' :
