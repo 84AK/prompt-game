@@ -266,11 +266,22 @@ const RctfBattle = () => {
               role: isAdminEmail ? 'ADMIN' : 'USER'
             };
           }
-          
+
           role = profile?.role || 'USER';
           if (isAdminEmail || hasAdminFlag) {
             role = 'ADMIN';
           }
+
+          // teachers 테이블 등록 여부 확인 → TEACHER 역할 부여
+          if (role === 'USER' && session.user.email) {
+            const { data: teacherData } = await supabase
+              .from('teachers')
+              .select('id')
+              .eq('email', session.user.email)
+              .maybeSingle();
+            if (teacherData) role = 'TEACHER';
+          }
+
           display_name = profile?.display_name || session.user.email.split('@')[0];
           
           setUserRole(role);
@@ -738,6 +749,24 @@ const RctfBattle = () => {
     showToast('🚪 방에서 정상적으로 퇴장했습니다.');
   };
 
+  // 호스트 방 종료 및 데이터 삭제
+  const handleHostCloseRoom = async () => {
+    if (!activeSession) return;
+    const confirmed = window.confirm('방을 종료하면 방 정보와 팀 데이터가 모두 삭제됩니다. 계속하시겠습니까?');
+    if (!confirmed) return;
+    try {
+      await supabase.from('rctf_teams').delete().eq('game_id', activeSession.id);
+      await supabase.from('rctf_games').delete().eq('id', activeSession.id);
+      setActiveSession(null);
+      setIsHost(false);
+      setGameState({ config: { gameState: 'WAITING', totalTeams: 0, currentTurn: 1 }, teams: [], pool: [] });
+      showToast('🚪 방이 종료되고 데이터가 삭제되었습니다.');
+    } catch (err) {
+      console.error(err);
+      showToast('방 종료에 실패했습니다.');
+    }
+  };
+
   // 새 게임 방 생성 (ADMIN/TEACHER만 호출 가능)
   const handleCreateRoom = async () => {
     if (!isHost) {
@@ -1001,17 +1030,25 @@ const RctfBattle = () => {
             </span>
           )}
           {/* HOST MODE 토글 (ADMIN/TEACHER만) */}
+          {isHost && activeSession && (
+            <button
+              onClick={handleHostCloseRoom}
+              className="px-4 py-2 rounded-xl text-xs font-black border transition-all cursor-pointer bg-red-500 text-white border-red-500 shadow-lg hover:bg-red-600"
+            >
+              🚪 방 종료
+            </button>
+          )}
           {isHost && (
-            <button 
-              onClick={() => setIsHost(false)} 
+            <button
+              onClick={() => setIsHost(false)}
               className="px-4 py-2 rounded-xl text-xs font-black border transition-all cursor-pointer bg-orange-500 text-white border-orange-500 shadow-lg"
             >
               EXIT HOST MODE
             </button>
           )}
           {!isHost && (userRole === 'ADMIN' || userRole === 'TEACHER') && (
-            <button 
-              onClick={() => setIsHost(true)} 
+            <button
+              onClick={() => setIsHost(true)}
               className="px-4 py-2 rounded-xl text-xs font-black border transition-all cursor-pointer bg-white text-gray-400 border-gray-200 hover:border-orange-400 hover:text-orange-500"
             >
               HOST MODE
