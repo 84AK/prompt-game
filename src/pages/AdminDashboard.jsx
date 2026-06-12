@@ -352,7 +352,7 @@ const AdminDashboard = () => {
       const name = targetUser?.display_name || '';
 
       if (newRole === 'TEACHER' && email) {
-        const insertData = { email, name };
+        const insertData = { id: targetId, email, name };
         if (user?.id) insertData.created_by = user.id;
         const { error: teacherErr } = await supabase.from('teachers').insert([insertData]);
         if (teacherErr && !teacherErr.message.includes('duplicate') && !teacherErr.message.includes('unique')) throw teacherErr;
