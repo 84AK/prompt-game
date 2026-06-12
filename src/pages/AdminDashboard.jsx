@@ -336,8 +336,11 @@ const AdminDashboard = () => {
   const handleSetRole = async (targetId, currentRole, newRole) => {
     if (currentRole === newRole) return;
     setSubmitting(true);
+
+    // 낙관적 UI 즉시 업데이트
+    setUsersList(prev => prev.map(u => u.id === targetId ? { ...u, role: newRole } : u));
+
     try {
-      // profiles 역할 업데이트
       const { error } = await supabase
         .from('profiles')
         .update({ role: newRole })
@@ -348,23 +351,23 @@ const AdminDashboard = () => {
       const email = targetUser?.email;
       const name = targetUser?.display_name || '';
 
-      // teachers 테이블 연동
       if (newRole === 'TEACHER' && email) {
-        // 선생님 권한 부여 → teachers에 추가
         const { data: { session } } = await supabase.auth.getSession();
-        await supabase.from('teachers').upsert([{
+        const { error: teacherErr } = await supabase.from('teachers').insert([{
           email,
           name,
           created_by: session?.user?.id
-        }], { onConflict: 'email' });
+        }]);
+        if (teacherErr && !teacherErr.message.includes('duplicate')) throw teacherErr;
       } else if (currentRole === 'TEACHER' && newRole !== 'TEACHER' && email) {
-        // 선생님 권한 해제 → teachers에서 삭제
-        await supabase.from('teachers').delete().eq('email', email);
+        const { error: deleteErr } = await supabase.from('teachers').delete().eq('email', email);
+        if (deleteErr) throw deleteErr;
       }
 
       showToast(`✅ ${name || targetId.substring(0, 8)} 권한이 ${newRole === 'TEACHER' ? '🧑‍🏫 선생님' : newRole}(으)로 변경되었습니다.`);
-      loadRealData();
     } catch (err) {
+      // 실패 시 롤백
+      setUsersList(prev => prev.map(u => u.id === targetId ? { ...u, role: currentRole } : u));
       showToast(`❌ 권한 변경 실패: ${err.message}`);
     } finally {
       setSubmitting(false);
