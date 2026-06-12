@@ -78,6 +78,9 @@ const DEFAULT_SEED_GAMES = [
   }
 ];
 
+// game_intros 시드 데이터 (관리자 UI에서 직접 등록하므로 기본값은 비워둠)
+const DEFAULT_SEED_INTROS = {};
+
 const AdminDashboard = () => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
