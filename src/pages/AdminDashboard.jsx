@@ -173,8 +173,8 @@ const AdminDashboard = () => {
             .from('profiles')
             .select('*')
             .eq('id', targetUser.id)
-            .single();
-          
+            .maybeSingle();
+
           if (!error && prof) {
             targetProfile = prof;
           }
@@ -523,7 +523,7 @@ const AdminDashboard = () => {
         .from('game_intros')
         .select('*')
         .eq('id', game.id)
-        .single();
+        .maybeSingle();
       
       if (data) {
         detailedIntro = data.detailed_intro || detailedIntro;
