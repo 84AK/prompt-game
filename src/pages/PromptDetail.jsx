@@ -97,8 +97,9 @@ const PromptDetail = () => {
 
   const fetchProfile = async (userId) => {
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (error || !data) throw error || new Error('No profile data');
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('No profile data');
       setProfile(data);
       if (data.role === 'ADMIN') {
         sessionStorage.setItem('rctf_admin_auth', 'true');

@@ -162,7 +162,7 @@ const GameIntro = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+        const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
         if (data) {
           setProfile(data);
           if (data.role === 'ADMIN') {

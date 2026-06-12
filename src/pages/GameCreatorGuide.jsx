@@ -40,7 +40,7 @@ const GameCreatorGuide = () => {
 
   const fetchProfile = async (userId) => {
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
       if (data) setProfile(data);
     } catch (err) {
       console.warn(err);

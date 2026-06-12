@@ -187,8 +187,9 @@ const Home = () => {
 
   const fetchProfile = async (userId) => {
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (error || !data) throw error || new Error('No profile');
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('No profile');
       
       setProfile(data);
       if (data.role === 'ADMIN') {

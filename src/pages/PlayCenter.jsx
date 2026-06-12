@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
-import { 
-  Sparkles, Gamepad2, Search, Zap, Swords, ArrowLeft, 
+import {
+  Sparkles, Gamepad2, Search, Zap, Swords, ArrowLeft,
   Shield, MessageSquare, User as UserIcon, LogOut, Heart, Share2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import promptThumb from '../assets/thumbnail/prompt.png';
+import fewShotThumb from '../assets/thumbnail/few-shot.png';
+import rctfThumb from '../assets/thumbnail/rctf-game.png';
 
 const PLAYABLE_GAMES = [
   {
@@ -20,7 +23,7 @@ const PLAYABLE_GAMES = [
     tag: '역추론',
     category: 'prompt',
     is_popular: true,
-    thumbnail_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80'
+    thumbnail_url: promptThumb
   },
   {
     id: 'few-shot-lab',
@@ -33,7 +36,7 @@ const PLAYABLE_GAMES = [
     tag: '패턴학습',
     category: 'prompt',
     is_popular: true,
-    thumbnail_url: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=800&q=80'
+    thumbnail_url: fewShotThumb
   },
   {
     id: 'rctf-battle',
@@ -46,7 +49,7 @@ const PLAYABLE_GAMES = [
     tag: '실전조합',
     category: 'prompt',
     is_popular: true,
-    thumbnail_url: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80'
+    thumbnail_url: rctfThumb
   }
 ];
 
@@ -144,8 +147,9 @@ const PlayCenter = () => {
 
   const fetchProfile = async (userId) => {
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (error || !data) throw error || new Error('No profile');
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('No profile');
       
       setProfile(data);
       if (data.role === 'ADMIN') {
@@ -383,8 +387,8 @@ const PlayCenter = () => {
                 <div>
                   {/* 프리미엄 썸네일 탑재 */}
                   <div className="w-full h-36 rounded-2xl overflow-hidden mb-6 relative group/img shadow-inner bg-gray-100">
-                    <img 
-                      src={game.thumbnail_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80'} 
+                    <img
+                      src={game.thumbnail_url || promptThumb}
                       alt={game.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
                     />
