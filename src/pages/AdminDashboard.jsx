@@ -352,13 +352,10 @@ const AdminDashboard = () => {
       const name = targetUser?.display_name || '';
 
       if (newRole === 'TEACHER' && email) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const { error: teacherErr } = await supabase.from('teachers').insert([{
-          email,
-          name,
-          created_by: session?.user?.id
-        }]);
-        if (teacherErr && !teacherErr.message.includes('duplicate')) throw teacherErr;
+        const insertData = { email, name };
+        if (user?.id) insertData.created_by = user.id;
+        const { error: teacherErr } = await supabase.from('teachers').insert([insertData]);
+        if (teacherErr && !teacherErr.message.includes('duplicate') && !teacherErr.message.includes('unique')) throw teacherErr;
       } else if (currentRole === 'TEACHER' && newRole !== 'TEACHER' && email) {
         const { error: deleteErr } = await supabase.from('teachers').delete().eq('email', email);
         if (deleteErr) throw deleteErr;
