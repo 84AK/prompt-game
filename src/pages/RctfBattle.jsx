@@ -263,32 +263,18 @@ const RctfBattle = () => {
           const isAdminEmail = ['mosebb@gmail.com', 'codingclubak03@gmail.com'].includes(session.user.email);
           const hasAdminFlag = sessionStorage.getItem('rctf_admin_auth') === 'true';
           
-          let { data: profile, error: profError } = await supabase
+          let { data: profile } = await supabase
             .from('profiles')
             .select('role, display_name')
             .eq('id', session.user.id)
-            .single();
-          
-          // 406 Not Acceptable 에러 해결: profiles 행이 없을 시 실시간 자동 생성(시딩)
-          if (profError || !profile) {
-            console.log("DB profiles 테이블에 행이 없으므로 자동 생성합니다.");
-            const newProfile = {
+            .maybeSingle();
+
+          if (!profile) {
+            profile = {
               id: session.user.id,
               display_name: session.user.email ? session.user.email.split('@')[0] : '마법사',
               role: isAdminEmail ? 'ADMIN' : 'USER'
             };
-            
-            const { data: createdProfile, error: createError } = await supabase
-              .from('profiles')
-              .insert([newProfile])
-              .select()
-              .single();
-            
-            if (!createError && createdProfile) {
-              profile = createdProfile;
-            } else {
-              profile = newProfile;
-            }
           }
           
           role = profile?.role || 'USER';
@@ -773,17 +759,13 @@ const RctfBattle = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: prof, error: profErr } = await supabase
+        const { data: prof } = await supabase
           .from('profiles')
           .select('display_name')
           .eq('id', session.user.id)
-          .single();
-        
-        if (!profErr && prof) {
-          hostName = prof.display_name;
-        } else {
-          hostName = session.user.email ? session.user.email.split('@')[0] : '선생님';
-        }
+          .maybeSingle();
+
+        hostName = prof?.display_name || (session.user.email ? session.user.email.split('@')[0] : '선생님');
       }
     } catch (err) {
       console.warn(err);
